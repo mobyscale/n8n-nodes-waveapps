@@ -12,8 +12,9 @@
 		"invoicing"
 	],
 	"author": {
-		"name": "Octane Software",
-		"email": "fisher1987@gmail.com"
+		"name": "Mobyscale",
+		"email": "software@mobyscale.com",
+		"url": "https://github.com/mobyscale"
 	},
 	"repository": {
 		"type": "git",
