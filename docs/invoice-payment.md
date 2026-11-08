@@ -28,11 +28,23 @@ Wave has no list of all payments. The **Payment** field gets its list from one i
 |---|---|
 | Invoice | Required. The invoice that the payment is for |
 | Payment Account | Required. The account that receives the payment, for example a bank account |
-| Amount | Required. The amount in the currency of the invoice |
+| Amount Type | `Custom Amount` (default) uses the **Amount** field. `Full Balance` pays the amount due of the invoice |
+| Amount | Required for Custom Amount. The amount in the currency of the invoice |
 | Payment Date | Required. The date of the payment |
 | Payment Method | Required. `Bank Transfer`, `Cash`, `Cheque`, `Credit Card`, `Other`, `Paypal` or `Unspecified` |
 | Exchange Rate | Required by Wave. Default is `1`. Wave uses it only when the invoice and the payment account have different currencies |
 | Memo | Optional note (in Additional Fields) |
+| Send Receipt | Send the receipt by email after Wave records the payment. Default is off |
+| Receipt To | Email addresses, separated by commas. Leave it empty to use the email address of the customer |
+| Receipt Options | Attach PDF, CC Myself, From Address, Message and Subject |
+
+### Pay in full
+
+With **Amount Type** set to `Full Balance`, the node reads `amountDue.value` of the invoice and uses it as the amount. If the amount due is 0, the node stops with an error and records no payment.
+
+### Send a receipt
+
+When **Send Receipt** is on, the node calls the receipt mutation after it records the payment. The node returns the payment. If the receipt fails, the error says that the payment was recorded and gives the payment ID. Do not record the payment again. Wave can send email only when the business has `emailSendEnabled` set to true. When it is false, Wave returns `FORBIDDEN` "Action not authorized".
 
 ## Update
 
