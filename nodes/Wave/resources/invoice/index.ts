@@ -15,10 +15,12 @@ import {
 	getLocatorValue,
 	getRequiredString,
 	getResourceId,
+	splitList,
+	toDate,
 } from '../../shared/utils';
 import { waveGetAll, waveMutation, waveRequest, type WaveConnection } from '../../transport';
 import type { OperationContext, ResourceModule } from '../types';
-import { buildInvoiceFields, buildItems, splitEmails, toDate } from './builders';
+import { buildInvoiceFields, buildItems } from './builders';
 import { INVOICE_FIELDS, INVOICE_LIST_FIELDS } from './fields';
 
 const RESOURCE = 'invoice';
@@ -636,7 +638,7 @@ export const invoiceResource: ResourceModule = {
 		},
 		async send({ itemIndex }) {
 			const invoiceId = getResourceId.call(this, 'invoiceId', itemIndex, 'Invoice');
-			const to = splitEmails(this.getNodeParameter('to', itemIndex) as string);
+			const to = splitList(this.getNodeParameter('to', itemIndex));
 			const fields = this.getNodeParameter('sendFields', itemIndex, {}) as IDataObject;
 			const output = await waveMutation<InvoiceOutput>(
 				this,

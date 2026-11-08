@@ -7,7 +7,7 @@ import {
 	showFor,
 } from '../../shared/descriptions';
 import { PAGE_INFO_FIELDS } from '../../shared/fields';
-import { compactInput, getBusinessId, getResourceId } from '../../shared/utils';
+import { compactInput, getBusinessId, getResourceId, toDate } from '../../shared/utils';
 import {
 	waveGetAll,
 	waveMutation,
@@ -261,8 +261,7 @@ type SalesTaxOutput = WaveMutationOutput & { salesTax: IDataObject | null };
 
 /** Formats a date or date-time value as the YYYY-MM-DD date that Wave expects. */
 export function toDateString(value: unknown, today: Date = new Date()): string {
-	if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
-	return today.toISOString().slice(0, 10);
+	return toDate(value) ?? today.toISOString().slice(0, 10);
 }
 
 /**

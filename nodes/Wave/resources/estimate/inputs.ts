@@ -1,25 +1,12 @@
 import type { IDataObject } from 'n8n-workflow';
 
-import { compactInput, getLocatorValue } from '../../shared/utils';
-
-/** Wave Date values are "YYYY-MM-DD". */
-export function toDate(value: unknown): string | undefined {
-	if (value === undefined || value === null || value === '') return undefined;
-	return String(value).slice(0, 10);
-}
-
-/** Wave DateTime values are ISO 8601 strings. */
-export function toDateTime(value: unknown): string | undefined {
-	if (value === undefined || value === null || value === '') return undefined;
-	const date = new Date(String(value));
-	return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
-}
-
-/** Accepts a list or a string with values separated by commas or line breaks. */
-export function splitList(value: unknown): string[] {
-	const parts = Array.isArray(value) ? value : String(value ?? '').split(/[,\n]/);
-	return parts.map((part) => String(part).trim()).filter(Boolean);
-}
+import {
+	compactInput,
+	getLocatorValue,
+	splitList,
+	toDate,
+	toDateTime,
+} from '../../shared/utils';
 
 const PASS_THROUGH_FIELDS = [
 	'title',

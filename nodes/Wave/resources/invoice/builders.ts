@@ -1,30 +1,15 @@
 import type { IDataObject } from 'n8n-workflow';
 
-import { compactInput, getLocatorValue } from '../../shared/utils';
-
-function toList(value: unknown, key: string): IDataObject[] {
-	const group = (value as IDataObject | undefined)?.[key];
-	if (Array.isArray(group)) return group as IDataObject[];
-	return group && typeof group === 'object' ? [group as IDataObject] : [];
-}
-
-/** Wave Date values have no time part. */
-export function toDate(value: unknown): string | undefined {
-	if (typeof value !== 'string' || !value) return undefined;
-	return value.slice(0, 10);
-}
-
-/** Splits a list of email addresses that are separated by commas, semicolons or new lines. */
-export function splitEmails(value: string): string[] {
-	return value
-		.split(/[,;\n]/)
-		.map((email) => email.trim())
-		.filter(Boolean);
-}
+import {
+	compactInput,
+	fixedCollectionValues,
+	getLocatorValue,
+	toDate,
+} from '../../shared/utils';
 
 /** Builds the `taxes` list of an `InvoiceCreateItemInput`. */
 export function buildTaxes(taxes: unknown): IDataObject[] | undefined {
-	const list = toList(taxes, 'taxValues')
+	const list = fixedCollectionValues(taxes, 'taxValues')
 		.map((tax) => getLocatorValue(tax.salesTax))
 		.filter((id): id is string => id !== undefined)
 		.map((salesTaxId) => ({ salesTaxId }));
@@ -36,7 +21,7 @@ export function buildTaxes(taxes: unknown): IDataObject[] | undefined {
  * lets Wave apply the default taxes of the product.
  */
 export function buildItems(items: unknown): IDataObject[] {
-	return toList(items, 'itemValues').map((item) => {
+	return fixedCollectionValues(items, 'itemValues').map((item) => {
 		const unitPrice = item.unitPrice;
 		return compactInput({
 			productId: getLocatorValue(item.product),
@@ -50,7 +35,7 @@ export function buildItems(items: unknown): IDataObject[] {
 
 /** Builds the `discounts` list from the "Discounts" fixed collection. */
 export function buildDiscounts(discounts: unknown): IDataObject[] {
-	return toList(discounts, 'discountValues').map((discount) => {
+	return fixedCollectionValues(discounts, 'discountValues').map((discount) => {
 		const isPercentage = discount.discountType === 'PERCENTAGE';
 		return compactInput({
 			discountType: discount.discountType,

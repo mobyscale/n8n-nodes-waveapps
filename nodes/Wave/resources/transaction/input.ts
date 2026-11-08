@@ -10,7 +10,13 @@ import type {
 	MoneyTransactionDetails,
 	TransactionDirection,
 } from '../../generated/schema';
-import { compactInput, getLocatorValue, getResourceId } from '../../shared/utils';
+import {
+	compactInput,
+	fixedCollectionValues,
+	getLocatorValue,
+	getResourceId,
+	toDate,
+} from '../../shared/utils';
 
 export type TransactionMode = 'simple' | 'advanced';
 export type SimpleTransactionType = 'expense' | 'income';
@@ -28,23 +34,6 @@ export interface SimpleTransactionInput {
 export function toDecimal(value: unknown): string {
 	if (typeof value === 'number') return String(value);
 	return String(value ?? '').trim();
-}
-
-/** Wave wants a date as yyyy-MM-dd. The n8n date picker gives a date and time. */
-export function toWaveDate(value: unknown): string | undefined {
-	let text: string;
-	if (value instanceof Date) text = value.toISOString();
-	else if (typeof value === 'string') text = value.trim();
-	else if (value !== null && value !== undefined) text = String(value);
-	else return undefined;
-	return /^\d{4}-\d{2}-\d{2}/.exec(text)?.[0];
-}
-
-/** Reads the entries of a fixedCollection with multiple values. */
-function fixedCollectionValues(raw: unknown, key = 'values'): IDataObject[] {
-	if (!raw || typeof raw !== 'object') return [];
-	const values = (raw as IDataObject)[key];
-	return Array.isArray(values) ? (values as IDataObject[]) : [];
 }
 
 /** Sales taxes from a fixedCollection of { salesTaxId, amount } entries. */
@@ -106,7 +95,7 @@ export function readTransactionDetails(
 	const amount = toDecimal(this.getNodeParameter('amount', itemIndex));
 	const additionalFields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
 
-	const date = toWaveDate(this.getNodeParameter('date', itemIndex));
+	const date = toDate(this.getNodeParameter('date', itemIndex));
 	if (!date) {
 		throw new NodeOperationError(this.getNode(), 'Set a date for the transaction', { itemIndex });
 	}
