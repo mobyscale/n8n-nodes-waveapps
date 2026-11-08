@@ -6,6 +6,7 @@ import {
 	paginationFields,
 	resourceLocator,
 	showFor,
+	simplifyField,
 } from '../../shared/descriptions';
 import { PAGE_INFO_FIELDS } from '../../shared/fields';
 import { compactInput, getBusinessId, getLocatorValue, getResourceId } from '../../shared/utils';
@@ -195,14 +196,16 @@ const description: INodeProperties[] = [
 				name: 'isBought',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to return only products that the business buys (true) or does not buy (false)',
+				description:
+					'Whether to return only products that the business buys (true) or does not buy (false)',
 			},
 			{
 				displayName: 'Is Sold',
 				name: 'isSold',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to return only products that the business sells (true) or does not sell (false)',
+				description:
+					'Whether to return only products that the business sells (true) or does not sell (false)',
 			},
 			{
 				displayName: 'Modified After',
@@ -291,7 +294,7 @@ export function buildProductFields(fields: IDataObject): IDataObject {
 
 export const productResource: ResourceModule = {
 	option: { name: 'Product / Service', value: RESOURCE },
-	description,
+	description: [...description, simplifyField(RESOURCE, ['get', 'getAll'])],
 	operations: {
 		async create({ itemIndex }: OperationContext) {
 			const businessId = getBusinessId.call(this, itemIndex);
@@ -299,7 +302,9 @@ export const productResource: ResourceModule = {
 				businessId,
 				name: this.getNodeParameter('name', itemIndex) as string,
 				unitPrice: String(this.getNodeParameter('unitPrice', itemIndex)),
-				...buildProductFields(this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject),
+				...buildProductFields(
+					this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject,
+				),
 			};
 			const output = await waveMutation<ProductOutput>(
 				this,
@@ -409,7 +414,11 @@ export const productResource: ResourceModule = {
 				{ id: productId },
 				{ itemIndex },
 			);
-			return { success: true, id: productId, ...(output.product ? { product: output.product } : {}) };
+			return {
+				success: true,
+				id: productId,
+				...(output.product ? { product: output.product } : {}),
+			};
 		},
 	},
 };

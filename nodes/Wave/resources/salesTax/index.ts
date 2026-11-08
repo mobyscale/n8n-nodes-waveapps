@@ -5,6 +5,7 @@ import {
 	paginationFields,
 	resourceLocator,
 	showFor,
+	simplifyField,
 } from '../../shared/descriptions';
 import { PAGE_INFO_FIELDS } from '../../shared/fields';
 import { compactInput, getBusinessId, getResourceId, toDate } from '../../shared/utils';
@@ -141,8 +142,7 @@ const description: INodeProperties[] = [
 				name: 'isRecoverable',
 				type: 'boolean',
 				default: false,
-				description:
-					'Whether you can deduct the tax that you paid from the tax that you collected',
+				description: 'Whether you can deduct the tax that you paid from the tax that you collected',
 			},
 			{
 				displayName: 'Show Tax Number on Invoices',
@@ -278,7 +278,7 @@ export function buildRateInput(
 
 export const salesTaxResource: ResourceModule = {
 	option: { name: 'Sales Tax', value: RESOURCE },
-	description,
+	description: [...description, simplifyField(RESOURCE, ['get', 'getAll'])],
 	operations: {
 		async create({ itemIndex }: OperationContext) {
 			const businessId = getBusinessId.call(this, itemIndex);

@@ -9,6 +9,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import * as listSearch from './methods/listSearch';
 import * as loadOptions from './methods/loadOptions';
 import { resources } from './resources';
+import { simplifyRecord } from './shared/simplify';
 import { toExecutionData, toNodeError } from './shared/utils';
 
 const resourceMap = new Map(resources.map((resource) => [resource.option.value, resource]));
@@ -91,7 +92,15 @@ export class Wave implements INodeType {
 					);
 				}
 				const result = await handler.call(this, { itemIndex });
-				returnData.push(...toExecutionData(result, itemIndex));
+				const entries = toExecutionData(result, itemIndex);
+				const canSimplify = operationName === 'get' || operationName === 'getAll';
+				const simplify =
+					canSimplify && (this.getNodeParameter('simplify', itemIndex, false) as boolean);
+				returnData.push(
+					...(simplify
+						? entries.map((entry) => ({ ...entry, json: simplifyRecord(entry.json) }))
+						: entries),
+				);
 			} catch (error) {
 				const nodeError = toNodeError(this.getNode(), error, itemIndex);
 				if (this.continueOnFail()) {

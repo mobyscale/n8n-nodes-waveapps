@@ -224,6 +224,21 @@ export const addressFields: INodeProperties[] = [
 	},
 ];
 
+export const SIMPLIFY_DESCRIPTION =
+	'Whether to return a simplified version of the response instead of the raw data';
+
+/** The Simplify toggle. The node applies it to the output of the operations that show it. */
+export function simplifyField(resource: string, operations: string[]): INodeProperties {
+	return {
+		displayName: 'Simplify',
+		name: 'simplify',
+		type: 'boolean',
+		default: false,
+		description: SIMPLIFY_DESCRIPTION,
+		displayOptions: showFor(resource, operations),
+	};
+}
+
 /** A currency dropdown (Wave CurrencyCode). */
 export function currencyField(overrides: Partial<INodeProperties> = {}): INodeProperties {
 	return {
