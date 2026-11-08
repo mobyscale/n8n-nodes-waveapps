@@ -1,3 +1,4 @@
 import { config } from '@n8n/node-cli/eslint';
 
-export default config;
+// Agent worktrees live in .claude/ inside the repository folder.
+export default [...config, { ignores: ['.claude/**'] }];
