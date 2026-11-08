@@ -21,6 +21,8 @@ Select a resource, then an operation. Fields that refer to Wave records (busines
 | Resource | Operations |
 |---|---|
 | [Business](docs/business.md) | Get, Get Invoice and Estimate Settings, Get Many |
+| [Custom GraphQL](docs/custom-graphql.md) | Execute |
+| [Transaction](docs/transaction.md) | Create, Create Many |
 | [User](docs/user.md) | Get Current, Get OAuth Application |
 | [Reference Data](docs/reference-data.md) | Get Account Subtypes, Get Account Types, Get Countries, Get Country, Get Currencies, Get Currency, Get Province |
 
