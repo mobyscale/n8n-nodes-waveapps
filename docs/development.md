@@ -130,3 +130,31 @@ The **Simplify** option lets users write Wave records to a spreadsheet or a tabl
 ### Before you open a pull request
 
 Run `npm run lint`, `npm run build`, `npm test` and `npm run test:integration`. All must pass.
+
+## Release
+
+GitHub Actions publishes the package to npm with a provenance statement (`.github/workflows/publish.yml`). n8n verifies a community node only when it was published this way. Do not run `npm publish` from your machine. The `prepublishOnly` script stops it.
+
+### Requirements for n8n verification
+
+- The GitHub repository is public. npm also rejects provenance from a private repository.
+- The license is MIT, in `LICENSE` and in `package.json`.
+- `repository.url` in `package.json` is the GitHub repository that publishes the package.
+- The package author is the same on npm and in the repository.
+- The package has no runtime dependencies. Put all packages in `devDependencies`.
+- The package name starts with `n8n-nodes-` and the keywords include `n8n-community-node-package`.
+- `npm run lint` passes.
+
+### One-time setup
+
+1. On npmjs.com, open the package settings and add a Trusted Publisher for GitHub Actions: organization `mobyscale`, repository `n8n-nodes-waveapps`, workflow file `publish.yml`. Before the first publish, the package does not exist on npm. In this case, add the `NPM_TOKEN` secret for the first release, then change to Trusted Publishing and remove the secret.
+2. Make the GitHub repository public.
+
+### Release a version
+
+1. Run the checks in [Before you open a pull request](#before-you-open-a-pull-request) on `main`.
+2. Set `GITHUB_TOKEN` to a token that can make releases in the repository, for example `$env:GITHUB_TOKEN = gh auth token` in PowerShell. release-it uses it for the GitHub release.
+3. Run `npm run release`. It asks for the new version, writes `CHANGELOG.md`, commits, makes the tag and pushes.
+4. The tag starts the Publish workflow. It checks that the tag is the package version, runs the unit tests, lint and build, and publishes with provenance.
+5. On npmjs.com, make sure that the version shows the provenance badge.
+6. Submit the package for verification in the n8n Creator Portal.
