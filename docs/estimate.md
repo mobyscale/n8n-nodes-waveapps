@@ -28,8 +28,10 @@ Most operations have a **Business** field and an **Estimate** field. Select the 
 | Field | Notes |
 |---|---|
 | Customer | Required |
-| Items | Product, Description, Quantity, Unit Price, Sales Tax, More Sales Tax IDs. Leave **Unit Price** empty to use the price of the product. Leave the taxes empty to use the default taxes of the product |
+| Items | Product, Name, Description, Quantity, Unit Price and Taxes. Add one entry to **Taxes** for each sales tax. Leave **Unit Price** empty to use the price of the product. Leave the taxes empty to use the default taxes of the product |
 | Additional Fields | Amount Column Title, Attachment IDs, Currency, Deposit Status, Deposit Unit, Deposit Value, Disable American Express Payments, Disable Bank Payments, Disable Credit Card Payments, Discounts, Don't Carry Over Notes to Invoice, Due Date, Estimate Date, Estimate Number, Exchange Rate, Footer, Hide Amount, Hide Description, Hide Name, Hide Price, Hide Unit, Item Column Title, Memo, PO Number, Price Column Title, Require Terms of Service Agreement, Subheading, Title, Unit Column Title |
+
+The **More Sales Tax IDs** field is removed. Add one entry to the **Taxes** list of an item for each sales tax instead.
 
 ## Update
 

@@ -117,3 +117,32 @@ export function toDateTime(value: unknown): string | undefined {
 	const date = new Date(String(value));
 	return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
 }
+
+/** Wave Date values are yyyy-MM-dd. The n8n date picker gives a date and time. */
+export function toDate(value: unknown): string | undefined {
+	let text: string;
+	if (value instanceof Date) {
+		if (Number.isNaN(value.getTime())) return undefined;
+		text = value.toISOString();
+	} else if (typeof value === 'string') text = value.trim();
+	else if (value !== null && value !== undefined) text = String(value);
+	else return undefined;
+	return /^\d{4}-\d{2}-\d{2}/.exec(text)?.[0];
+}
+
+/** Accepts a list or a string with values separated by commas, semicolons or line breaks. */
+export function splitList(value: unknown): string[] {
+	const parts = Array.isArray(value) ? value : String(value ?? '').split(/[,;\n]/);
+	return parts.map((part) => String(part).trim()).filter(Boolean);
+}
+
+/**
+ * Reads the entries of a fixed collection value. n8n gives a list when the collection allows
+ * multiple values and a single object when it does not.
+ */
+export function fixedCollectionValues(value: unknown, key = 'values'): IDataObject[] {
+	if (!value || typeof value !== 'object') return [];
+	const group = (value as IDataObject)[key];
+	if (Array.isArray(group)) return group as IDataObject[];
+	return group && typeof group === 'object' ? [group as IDataObject] : [];
+}
