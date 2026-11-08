@@ -40,10 +40,13 @@
 		"strict": true,
 		"credentials": [
 			"dist/credentials/WaveApi.credentials.js",
-			"dist/credentials/WaveOAuth2Api.credentials.js"
+			"dist/credentials/WaveOAuth2Api.credentials.js",
+			"dist/credentials/WaveWebhookApi.credentials.js"
 		],
 		"nodes": [
-			"dist/nodes/Wave/Wave.node.js"
+			"dist/nodes/Wave/Wave.node.js",
+			"dist/nodes/WaveTrigger/WaveTrigger.node.js",
+			"dist/nodes/WaveWebhookTrigger/WaveWebhookTrigger.node.js"
 		]
 	},
 	"devDependencies": {
