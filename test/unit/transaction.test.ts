@@ -180,6 +180,27 @@ describe('simple mode', () => {
 		expect(details.notes).toBeUndefined();
 	});
 
+	it('generates a stable External ID from the transaction data when asked', () => {
+		const generate = { options: { externalIdWhenEmpty: 'generate' } };
+		const { context } = createContext([
+			expenseItem(generate),
+			expenseItem({ ...generate, description: '  N8N-TEST   chairs ', amount: '10.00' }),
+			expenseItem({ ...generate, transactionType: 'income', incomeAccountId: rl('sales') }),
+			expenseItem({ ...generate, amount: 10.01 }),
+			expenseItem({ ...generate, expenseAccountId: rl('furniture') }),
+			expenseItem({ ...generate, externalId: 'given' }),
+		]);
+		const ids = [0, 1, 2, 3, 4, 5].map(
+			(index) => readTransactionDetails.call(context, index).externalId,
+		);
+		expect(ids[0]).toMatch(/^n8n-[0-9a-f]{40}$/);
+		expect(ids[1]).toBe(ids[0]);
+		expect(ids[2]).not.toBe(ids[0]);
+		expect(ids[3]).not.toBe(ids[0]);
+		expect(ids[4]).toBe(ids[0]);
+		expect(ids[5]).toBe('given');
+	});
+
 	it('fails without a description', () => {
 		const { context } = createContext([expenseItem({ description: ' ' })]);
 		expect(() => readTransactionDetails.call(context, 0)).toThrow('description');
@@ -387,6 +408,20 @@ describe('skip duplicates', () => {
 		expect(isDuplicateExternalIdError(new Error(duplicateMessage))).toBe(true);
 		expect(isDuplicateExternalIdError(new Error('This value is invalid'))).toBe(false);
 		expect(isDuplicateExternalIdError(undefined)).toBe(false);
+	});
+
+	it('create many skips a repeated External ID inside the input when the option is on', async () => {
+		const options = { skipDuplicates: true, externalIdWhenEmpty: 'generate' };
+		const { context, request } = createContext(
+			[expenseItem({ options }), expenseItem({ options }), expenseItem({ options, amount: 2 })],
+			[batchResponse(['t0', 't2'])],
+		);
+		const output = await run(context);
+		expect(request).toHaveBeenCalledTimes(1);
+		expect(output.map((item) => item.pairedItem)).toEqual([{ item: 0 }, { item: 1 }, { item: 2 }]);
+		expect(output[1].json).toMatchObject({ skipped: true, reason: 'duplicate externalId' });
+		expect(output[0].json.transaction).toEqual({ id: 't0' });
+		expect(output[2].json.transaction).toEqual({ id: 't2' });
 	});
 
 	it('create returns a skipped item for a duplicate when the option is on', async () => {

@@ -34,7 +34,7 @@ Create and Create Many have the same fields.
 | **Amount** | The total amount, including taxes. Use a positive number |
 | **External ID** | Your ID for the transaction. See [External ID](#external-id) |
 | Additional Fields | **Notes**. In simple mode also **Customer** and **Sales Taxes** |
-| Options | **Skip Duplicates**: see [Skip Duplicates](#skip-duplicates). Create Many also has **Batch Size**: the number of transactions in one request. The default is 20 and the maximum is 50 |
+| Options | **External ID When Empty**: see [External ID](#external-id). **Skip Duplicates**: see [Skip Duplicates](#skip-duplicates). Create Many also has **Batch Size**: the number of transactions in one request. The default is 20 and the maximum is 50 |
 
 ### Simple mode
 
@@ -103,7 +103,12 @@ Wave does not accept accounts receivable, accounts payable, payroll liabilities,
 
 ## External ID
 
-Wave needs an External ID for each transaction. When the field is empty, the node uses a random ID.
+Wave needs an External ID for each transaction. When the field is empty, the option **External ID When Empty** sets how the node makes one:
+
+- **Random ID** (default): a new ID each time. If you run the same import again, the transactions are created again.
+- **Generate From Transaction Data**: an ID made from the anchor account, date, direction, amount and description. The description match ignores letter case and extra spaces. The same row gives the same ID on each run, so with **Skip Duplicates** an import that runs again creates only the new rows. The category accounts are not part of the ID, so a row with a changed category is still the same row.
+
+  Limit: two real transactions with the same anchor account, date, direction, amount and description get the same ID. Wave keeps only the first. If your source can have such rows, add a value that makes them different to the description, or use the source ID as the External ID.
 
 Wave rejects a transaction when another transaction in the business has the same External ID ("A transaction with the same externalId already exists"). Use a stable ID from the source system, for example the ID of the bank transaction or the order. Then you can run the workflow again without duplicates: the transactions that exist already fail, and the new ones are created. Turn on **Continue On Fail** (On Error: Continue) to keep the other items running.
 
@@ -124,7 +129,7 @@ Create Many puts all input items in batch requests. The items can use different 
 
 - Wave creates all transactions in a batch, or none of them.
 - If one transaction in a batch is not valid, Wave rejects the full batch. The error message does not always tell which transaction has the problem. Use Create with the same items to find it.
-- If two items have the same External ID, the node fails the second item before it sends the batch.
+- If two items have the same External ID, the node fails the second item before it sends the batch. With **Skip Duplicates**, the second item is skipped.
 - Large batches can time out. A batch that timed out can still be created in Wave. Run it again with the same External IDs: Wave rejects the transactions that exist.
 - With Continue On Fail, each item of a failed batch gets an output item with the error.
 

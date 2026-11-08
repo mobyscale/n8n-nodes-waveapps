@@ -250,6 +250,45 @@ describe.skipIf(!hasConfig)('transaction', () => {
 		expectCreated(output[2].json);
 	});
 
+	it('skips all rows when the same import runs again with generated External IDs', async () => {
+		const description = uniqueName('reimport');
+		const rows = [1.11, 2.22].map((amount, index) => ({ json: { amount, index } }));
+		const runImport = async () => {
+			const context = createExecuteContext(
+				{
+					...base(),
+					operation: 'createMany',
+					mode: 'simple',
+					transactionType: 'expense',
+					expenseAccountId: rl(expenseId),
+					description,
+					externalId: '',
+					additionalFields: {},
+					options: { skipDuplicates: true, externalIdWhenEmpty: 'generate' },
+				},
+				rows,
+			);
+			const original = context.getNodeParameter;
+			context.getNodeParameter = ((name: string, itemIndex: number, ...rest: unknown[]) =>
+				name === 'amount'
+					? rows[itemIndex].json.amount
+					: (original as (...args: unknown[]) => unknown).call(
+							context,
+							name,
+							itemIndex,
+							...rest,
+						)) as typeof context.getNodeParameter;
+			const [output] = await new Wave().execute.call(context);
+			return output.map((item) => item.json);
+		};
+
+		const first = await runImport();
+		first.forEach(expectCreated);
+		const second = await runImport();
+		expect(second.map((row) => row.skipped)).toEqual([true, true]);
+		expect(second.map((row) => row.externalId)).toEqual(first.map((row) => row.externalId));
+	});
+
 	it('creates an advanced entry with two line items', async () => {
 		const [result] = await runNode({
 			...base(),
