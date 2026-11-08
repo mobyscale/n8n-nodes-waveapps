@@ -12,6 +12,8 @@ export interface LineItemOptions {
 
 export interface ItemsFieldOptions extends LineItemOptions {
 	description: string;
+	/** Adds the Product Name field that the top-level "Match Products By Name" option turns on. */
+	withProductNameMatching?: boolean;
 	displayOptions?: INodeProperties['displayOptions'];
 }
 
@@ -43,14 +45,30 @@ export function itemsField(options: ItemsFieldOptions): INodeProperties {
 		});
 	}
 
+	const matching = options.withProductNameMatching;
 	const values: INodeProperties[] = [
-		resourceLocator({
-			name: 'product',
-			displayName: 'Product',
-			searchMethod: 'searchProducts',
-			resourceLabel: 'product',
-		}),
+		{
+			...resourceLocator({
+				name: 'product',
+				displayName: 'Product',
+				searchMethod: 'searchProducts',
+				resourceLabel: 'product',
+			}),
+			...(matching ? { displayOptions: { show: { '/matchProductsByName': [false] } } } : {}),
+		},
 	];
+	if (matching) {
+		values.push({
+			displayName: 'Product Name',
+			name: 'productName',
+			type: 'string',
+			default: '',
+			required: true,
+			description:
+				'Name of an existing product. Wave creates the product when no active product has this name.',
+			displayOptions: { show: { '/matchProductsByName': [true] } },
+		});
+	}
 	if (options.withItemName) {
 		values.push({
 			displayName: 'Name',
