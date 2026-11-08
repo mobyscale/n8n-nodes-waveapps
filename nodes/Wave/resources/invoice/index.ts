@@ -1,4 +1,4 @@
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import {
@@ -11,6 +11,7 @@ import {
 } from '../../shared/descriptions';
 import { afterCreateFields, runAfterCreate } from '../../shared/afterCreate';
 import { PAGE_INFO_FIELDS } from '../../shared/fields';
+import { downloadPdf } from '../../shared/pdf';
 import { buildLineItems, discountsField, itemsField } from '../../shared/lineItems';
 import { getProductMatchConfig, resolveItemProducts } from '../../shared/productMatching';
 import {
@@ -24,12 +25,27 @@ import {
 } from '../../shared/utils';
 import { waveGetAll, waveMutation, type WaveConnection } from '../../transport';
 import type { OperationContext, ResourceModule } from '../types';
-import { approveInvoice, getInvoice, markInvoiceSent, sendInvoice } from './actions';
+import {
+	approveInvoice,
+	findInvoiceIdByNumber,
+	getInvoice,
+	markInvoiceSent,
+	sendInvoice,
+} from './actions';
 import { buildInvoiceFields } from './builders';
 import { INVOICE_FIELDS, INVOICE_LIST_FIELDS } from './fields';
 
 const RESOURCE = 'invoice';
-const INVOICE_OPERATIONS = ['approve', 'clone', 'delete', 'get', 'markSent', 'send', 'update'];
+const INVOICE_OPERATIONS = [
+	'approve',
+	'clone',
+	'delete',
+	'downloadPdf',
+	'get',
+	'markSent',
+	'send',
+	'update',
+];
 
 const customerLocator = (overrides: Partial<INodeProperties> = {}): INodeProperties => ({
 	...resourceLocator({
@@ -129,29 +145,29 @@ const sharedOptionalFields: INodeProperties[] = [
 
 /** Optional fields of the Send operation. "After Create" with Approve and Send uses them too. */
 const sendOptionFields: INodeProperties[] = [
-		{
-			displayName: 'Attach PDF',
-			name: 'attachPDF',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to attach a PDF of the invoice',
-		},
-		{
-			displayName: 'CC Myself',
-			name: 'ccMyself',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to send a copy to the sender',
-		},
-		text('From Address', 'fromAddress', 'The email address that sends the invoice'),
-		{
-			displayName: 'Message',
-			name: 'message',
-			type: 'string',
-			typeOptions: { rows: 4 },
-			default: '',
-		},
-		text('Subject', 'subject'),
+	{
+		displayName: 'Attach PDF',
+		name: 'attachPDF',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to attach a PDF of the invoice',
+	},
+	{
+		displayName: 'CC Myself',
+		name: 'ccMyself',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to send a copy to the sender',
+	},
+	text('From Address', 'fromAddress', 'The email address that sends the invoice'),
+	{
+		displayName: 'Message',
+		name: 'message',
+		type: 'string',
+		typeOptions: { rows: 4 },
+		default: '',
+	},
+	text('Subject', 'subject'),
 ];
 
 const description: INodeProperties[] = [
@@ -185,6 +201,12 @@ const description: INodeProperties[] = [
 				value: 'delete',
 				description: 'Delete an invoice',
 				action: 'Delete an invoice',
+			},
+			{
+				name: 'Download PDF',
+				value: 'downloadPdf',
+				description: 'Download the PDF of an invoice as binary data',
+				action: 'Download an invoice PDF',
 			},
 			{
 				name: 'Get',
@@ -267,7 +289,18 @@ const description: INodeProperties[] = [
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: showFor(RESOURCE, ['create']),
-		options: sharedOptionalFields,
+		options: [
+			...sharedOptionalFields,
+			{
+				displayName: 'Skip If Invoice Number Exists',
+				name: 'skipIfInvoiceNumberExists',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to return the invoice with the same Invoice Number, and not create a new one. Wave does not run the After Create steps then.',
+				displayOptions: { show: { invoiceNumber: [{ _cnd: { exists: true } }] } },
+			},
+		],
 	},
 	...afterCreateFields(RESOURCE, 'invoice', sendOptionFields),
 
@@ -286,6 +319,16 @@ const description: INodeProperties[] = [
 			}),
 			...sharedOptionalFields,
 		],
+	},
+
+	// Download PDF
+	{
+		displayName: 'Put Output File in Field',
+		name: 'binaryPropertyName',
+		type: 'string',
+		default: 'data',
+		description: 'The name of the binary field that gets the PDF',
+		displayOptions: showFor(RESOURCE, ['downloadPdf']),
 	},
 
 	// Mark Sent
@@ -432,12 +475,21 @@ export const invoiceResource: ResourceModule = {
 		async create({ itemIndex }) {
 			const businessId = getBusinessId.call(this, itemIndex);
 			const customerId = getRequiredString.call(this, 'customer', itemIndex);
+			const { skipIfInvoiceNumberExists, ...fields } = this.getNodeParameter(
+				'additionalFields',
+				itemIndex,
+				{},
+			) as IDataObject;
+			const invoiceNumber = String(fields.invoiceNumber ?? '').trim();
+			if (skipIfInvoiceNumberExists && invoiceNumber) {
+				const existingId = await findInvoiceIdByNumber(this, itemIndex, businessId, invoiceNumber);
+				if (existingId) return await getInvoice(this, itemIndex, businessId, existingId);
+			}
 			const rawItems = this.getNodeParameter('items', itemIndex, {});
 			const matching = getProductMatchConfig(this, itemIndex, businessId);
 			const items = buildLineItems(
 				matching ? await resolveItemProducts(this, itemIndex, matching, rawItems) : rawItems,
 			);
-			const fields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
 			const output = await waveMutation<InvoiceOutput>(
 				this,
 				`mutation($input: InvoiceCreateInput!) {
@@ -465,7 +517,8 @@ export const invoiceResource: ResourceModule = {
 				action: this.getNodeParameter('afterCreate', itemIndex, 'draft'),
 				run: async (step) => {
 					if (step === 'approve') await approveInvoice(this, itemIndex, id);
-					else if (step === 'markSent') await markInvoiceSent(this, itemIndex, { invoiceId: id });
+					else if (step === 'markSent')
+						await markInvoiceSent(this, itemIndex, { invoiceId: id, sendMethod: 'MARKED_SENT' });
 					else {
 						const customer = created.customer as IDataObject | undefined;
 						const to = splitList(this.getNodeParameter('afterCreateTo', itemIndex, ''));
@@ -499,6 +552,28 @@ export const invoiceResource: ResourceModule = {
 				{ itemIndex },
 			);
 			return { success: true, id: invoiceId };
+		},
+		async downloadPdf({ itemIndex }) {
+			const businessId = getBusinessId.call(this, itemIndex);
+			const invoiceId = getResourceId.call(this, 'invoiceId', itemIndex, 'Invoice');
+			const invoice = await getInvoice(this, itemIndex, businessId, invoiceId);
+			const pdfUrl = invoice.pdfUrl as string | null | undefined;
+			if (!pdfUrl) {
+				throw new NodeOperationError(this.getNode(), `Invoice ${invoiceId} has no PDF URL`, {
+					itemIndex,
+				});
+			}
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
+			const binary = await downloadPdf(
+				this,
+				pdfUrl,
+				`invoice-${String(invoice.invoiceNumber ?? invoiceId.slice(-12))}.pdf`,
+			);
+			const result: INodeExecutionData = {
+				json: { invoiceId, invoiceNumber: invoice.invoiceNumber, pdfUrl },
+				binary: { [binaryPropertyName]: binary },
+			};
+			return [result];
 		},
 		async get({ itemIndex }) {
 			const businessId = getBusinessId.call(this, itemIndex);
