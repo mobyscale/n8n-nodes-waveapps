@@ -6,7 +6,7 @@ import { getLocatorValue } from '../Wave/shared/utils';
 import {
 	CUSTOMER_FIELDS,
 	ESTIMATE_FIELDS,
-	INVOICE_FIELDS,
+	INVOICE_LIST_FIELDS,
 	PRODUCT_FIELDS,
 	SALES_TAX_FIELDS,
 	VENDOR_FIELDS,
@@ -64,7 +64,7 @@ export const RESOURCES: Record<TriggerResource, ResourceConfig> = {
 	invoice: {
 		name: 'Invoice',
 		listField: 'invoices',
-		fields: INVOICE_FIELDS,
+		fields: INVOICE_LIST_FIELDS,
 		filterArgs: { status: 'InvoiceStatus', customerId: 'ID', currency: 'CurrencyCode' },
 		sort: sortValues(true),
 	},
