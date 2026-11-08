@@ -15,6 +15,8 @@ Every operation has a **Business** field. Operations that work on one customer a
 | Get Many | Get the customers of a business |
 | Update | Change fields of a customer. The node sends only the fields that you set |
 
+Get and Get Many have a **Simplify** option. It is off by default. When you turn it on, the node returns flat values that you can write to a spreadsheet. See [Simplify](development.md#simplify).
+
 ## Fields
 
 ### Create (Additional Fields) and Update (Update Fields)

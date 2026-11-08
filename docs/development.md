@@ -97,6 +97,20 @@ Use `resources/business/index.ts` as the example to copy.
 - Return the Wave objects as Wave sends them. Do not rename fields.
 - Delete and archive operations return `{ success: true, id }` (plus the archived record when Wave returns one).
 
+### Simplify
+
+The **Simplify** option lets users write Wave records to a spreadsheet or a table without a Code node. It is a boolean with the default `false`, so the default output stays the Wave object. The operations Get and Get Many of every resource that returns records have it. The Wave Trigger has it in **Options**.
+
+- `simplifyField(RESOURCE, operations)` in `shared/descriptions.ts` makes the parameter. `Wave.node.ts` applies `simplifyRecord` to the output of Get and Get Many when the parameter is on. A handler does not read the parameter.
+- `simplifyRecord` in `shared/simplify.ts` is the only place that decides how a value changes. It works on any depth.
+- Money (`value` and `currency`) becomes a number. A `currency` code is added next to it when the record has no `currency` field.
+- A currency, province or country becomes its code. An object with `name` and `value` (for example an account type) becomes its `value`.
+- An address stays an object with simple values. `addressText` has the address in one line.
+- A nested record with an `id` becomes `<key>Id` and `<key>Name`. The shipping details of a customer or vendor become `shipping...` fields.
+- A nested `business` object, `minorUnitValue`, `classicId` and `__typename` are removed.
+- A string becomes a number only when its field is in `DECIMAL_FIELDS`. These are the fields that `schema/wave.graphql` types as `Decimal`. Add a field to the list when you select a new Decimal field. Do not add IDs, numbers that are labels, postal codes or phone numbers.
+- Lists are simplified element by element. Enums, dates and date-times stay strings.
+
 ### Tests
 
 - Add unit tests for helpers with logic (input builders, mapping) in `test/unit`.

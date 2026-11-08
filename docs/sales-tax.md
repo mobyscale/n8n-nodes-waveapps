@@ -14,6 +14,8 @@ All operations have a **Business** field. To pick a sales tax, use the **Sales T
 | Get Many | Get sales taxes. You can filter the list |
 | Update | Change a sales tax or give it a new rate |
 
+Get and Get Many have a **Simplify** option. It is off by default. When you turn it on, the node returns flat values that you can write to a spreadsheet. See [Simplify](development.md#simplify).
+
 ## Fields
 
 | Field | Used in | Description |
