@@ -8,7 +8,7 @@ export class WaveWebhookApi implements ICredentialType {
 	icon: Icon = { light: 'file:../nodes/Wave/wave.svg', dark: 'file:../nodes/Wave/wave.dark.svg' };
 
 	documentationUrl =
-		'https://github.com/octanesoftware/n8n-nodes-waveapps/blob/main/docs/wave-webhook-trigger.md';
+		'https://github.com/mobyscale/n8n-nodes-waveapps/blob/main/docs/wave-webhook-trigger.md';
 
 	properties: INodeProperties[] = [
 		{
@@ -19,7 +19,7 @@ export class WaveWebhookApi implements ICredentialType {
 			default: '',
 			required: true,
 			description:
-				'The signing secret of the webhook endpoint. Copy it from the Wave dashboard (Tools > Webhooks).',
+				'The Secret token of the webhook endpoint. Copy it from the Wave dashboard (Tools > Webhooks).',
 		},
 	];
 }

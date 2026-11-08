@@ -49,6 +49,8 @@ Starts a workflow when Wave sends a webhook event, for example `invoice.paid` or
 
 Tested with n8n 2.x and Node.js 22.
 
+Built against the Wave GraphQL schema of 2026-11-08. Wave does not version its API. See [Wave API version](docs/wave-api.md) for the baseline and for how to compare it with a new schema.
+
 ## Development
 
 See [Development](docs/development.md).
