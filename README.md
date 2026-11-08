@@ -22,11 +22,13 @@ Select a resource, then an operation. Fields that refer to Wave records (busines
 |---|---|
 | [Account](docs/account.md) | Archive, Create, Get, Get Many, Update |
 | [Business](docs/business.md) | Get, Get Invoice and Estimate Settings, Get Many |
+| [Custom GraphQL](docs/custom-graphql.md) | Execute |
 | [Customer](docs/customer.md) | Create, Delete, Get, Get Many, Update |
 | [Estimate](docs/estimate.md) | Approve, Clone, Convert to Invoice, Create, Delete, Generate PDF, Get, Get Many, Mark Accepted, Mark Sent, Reset Acceptance, Send, Send Acceptance Email, Update |
 | [Estimate Deposit](docs/estimate-deposit.md) | Delete, Get, Record Manual Deposit, Send Receipt, Update |
 | [Product / Service](docs/product.md) | Archive, Create, Get, Get Many, Update |
 | [Sales Tax](docs/sales-tax.md) | Archive, Create, Get, Get Many, Update |
+| [Transaction](docs/transaction.md) | Create, Create Many |
 | [User](docs/user.md) | Get Current, Get OAuth Application |
 | [Vendor](docs/vendor.md) | Get, Get Many |
 | [Reference Data](docs/reference-data.md) | Get Account Subtypes, Get Account Types, Get Countries, Get Country, Get Currencies, Get Currency, Get Province |
