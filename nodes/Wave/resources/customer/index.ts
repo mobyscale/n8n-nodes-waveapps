@@ -1,4 +1,5 @@
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	addressFields,
@@ -143,6 +144,12 @@ const description: INodeProperties[] = [
 				action: 'Create a customer',
 			},
 			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a customer',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a customer',
@@ -179,13 +186,39 @@ const description: INodeProperties[] = [
 		displayOptions: showFor(RESOURCE, ['get', 'update', 'delete']),
 	}),
 	{
+		displayName: 'Match By',
+		name: 'matchBy',
+		type: 'options',
+		noDataExpression: true,
+		default: 'email',
+		description: 'How to find the existing customer',
+		displayOptions: showFor(RESOURCE, ['upsert']),
+		options: [
+			{
+				name: 'Display ID',
+				value: 'displayId',
+				description: 'Exact match on the Display ID in Additional Fields. Scans all customers.',
+			},
+			{
+				name: 'Email',
+				value: 'email',
+				description: 'Match on the Email in Additional Fields. Wave does the search.',
+			},
+			{
+				name: 'Name',
+				value: 'name',
+				description: 'Match on the name, without case and outer spaces. Scans all customers.',
+			},
+		],
+	},
+	{
 		displayName: 'Name',
 		name: 'name',
 		type: 'string',
 		required: true,
 		default: '',
 		description: 'Name or business name of the customer',
-		displayOptions: showFor(RESOURCE, ['create']),
+		displayOptions: showFor(RESOURCE, ['create', 'upsert']),
 	},
 	{
 		displayName: 'Additional Fields',
@@ -193,7 +226,7 @@ const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: showFor(RESOURCE, ['create']),
+		displayOptions: showFor(RESOURCE, ['create', 'upsert']),
 		options: customerFieldOptions(),
 	},
 	{
@@ -267,6 +300,96 @@ const description: INodeProperties[] = [
 
 type CustomerOutput = WaveMutationOutput & { customer?: IDataObject | null };
 
+type MatchBy = 'email' | 'name' | 'displayId';
+
+const MATCH_LABELS: Record<MatchBy, string> = {
+	email: 'Email',
+	name: 'Name',
+	displayId: 'Display ID',
+};
+
+interface CustomerSummary {
+	id: string;
+	name?: string | null;
+	displayId?: string | null;
+}
+
+async function createCustomer(
+	ctx: IExecuteFunctions,
+	businessId: string,
+	name: string,
+	fields: IDataObject,
+	itemIndex: number,
+): Promise<IDataObject> {
+	const output = await waveMutation<CustomerOutput>(
+		ctx,
+		`mutation($input: CustomerCreateInput!) {
+			customerCreate(input: $input) {
+				didSucceed
+				inputErrors { code message path }
+				customer { ${CUSTOMER_FIELDS} }
+			}
+		}`,
+		'customerCreate',
+		{ businessId, name, ...compactInput(fields) },
+		{ itemIndex },
+	);
+	return output.customer ?? {};
+}
+
+async function patchCustomer(
+	ctx: IExecuteFunctions,
+	id: string,
+	fields: IDataObject,
+	itemIndex: number,
+): Promise<IDataObject> {
+	const output = await waveMutation<CustomerOutput>(
+		ctx,
+		`mutation($input: CustomerPatchInput!) {
+			customerPatch(input: $input) {
+				didSucceed
+				inputErrors { code message path }
+				customer { ${CUSTOMER_FIELDS} }
+			}
+		}`,
+		'customerPatch',
+		{ id, ...compactInput(fields) },
+		{ itemIndex },
+	);
+	return output.customer ?? {};
+}
+
+/** Finds the customers that match. Email uses the Wave filter. The other fields need a scan. */
+async function findMatchingCustomers(
+	ctx: IExecuteFunctions,
+	businessId: string,
+	matchBy: MatchBy,
+	value: string,
+	itemIndex: number,
+): Promise<CustomerSummary[]> {
+	const customers = await waveGetAll<
+		CustomerSummary,
+		{ business: { customers: WaveConnection<CustomerSummary> } | null }
+	>(
+		ctx,
+		`query($businessId: ID!, $page: Int!, $pageSize: Int!, $email: String) {
+			business(id: $businessId) {
+				customers(page: $page, pageSize: $pageSize, email: $email) {
+					pageInfo { ${PAGE_INFO_FIELDS} }
+					edges { node { id name displayId } }
+				}
+			}
+		}`,
+		{ businessId, email: matchBy === 'email' ? value : null },
+		(data) => data.business?.customers,
+		{ itemIndex },
+	);
+	if (matchBy === 'email') return customers;
+	if (matchBy === 'displayId') return customers.filter((customer) => customer.displayId === value);
+	const wanted = value.toLowerCase();
+	return customers.filter((customer) => (customer.name ?? '').trim().toLowerCase() === wanted);
+}
+
 export const customerResource: ResourceModule = {
 	option: { name: 'Customer', value: RESOURCE },
 	description,
@@ -275,20 +398,38 @@ export const customerResource: ResourceModule = {
 			const businessId = getBusinessId.call(this, itemIndex);
 			const name = getRequiredString.call(this, 'name', itemIndex);
 			const fields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
-			const output = await waveMutation<CustomerOutput>(
-				this,
-				`mutation($input: CustomerCreateInput!) {
-					customerCreate(input: $input) {
-						didSucceed
-						inputErrors { code message path }
-						customer { ${CUSTOMER_FIELDS} }
-					}
-				}`,
-				'customerCreate',
-				{ businessId, name, ...compactInput(fields) },
-				{ itemIndex },
-			);
-			return output.customer ?? {};
+			return await createCustomer(this, businessId, name, fields, itemIndex);
+		},
+		async upsert({ itemIndex }) {
+			const businessId = getBusinessId.call(this, itemIndex);
+			const name = getRequiredString.call(this, 'name', itemIndex);
+			const fields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
+			const matchBy = this.getNodeParameter('matchBy', itemIndex, 'email') as MatchBy;
+			const value = String(matchBy === 'name' ? name : (fields[matchBy] ?? '')).trim();
+			if (!value) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Set the ${MATCH_LABELS[matchBy]} to match the customer`,
+					{
+						itemIndex,
+						description: `Add ${MATCH_LABELS[matchBy]} in Additional Fields, or change Match By.`,
+					},
+				);
+			}
+			const matches = await findMatchingCustomers(this, businessId, matchBy, value, itemIndex);
+			if (matches.length > 1) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`${matches.length} customers match ${MATCH_LABELS[matchBy]} "${value}". Matching IDs: ${matches
+						.map((customer) => customer.id)
+						.join(', ')}`,
+					{ itemIndex },
+				);
+			}
+			if (matches.length === 1) {
+				return await patchCustomer(this, matches[0].id, { name, ...fields }, itemIndex);
+			}
+			return await createCustomer(this, businessId, name, fields, itemIndex);
 		},
 		async get({ itemIndex }) {
 			const businessId = getBusinessId.call(this, itemIndex);
@@ -343,20 +484,7 @@ export const customerResource: ResourceModule = {
 		async update({ itemIndex }) {
 			const id = getResourceId.call(this, 'customerId', itemIndex, 'Customer');
 			const fields = this.getNodeParameter('updateFields', itemIndex, {}) as IDataObject;
-			const output = await waveMutation<CustomerOutput>(
-				this,
-				`mutation($input: CustomerPatchInput!) {
-					customerPatch(input: $input) {
-						didSucceed
-						inputErrors { code message path }
-						customer { ${CUSTOMER_FIELDS} }
-					}
-				}`,
-				'customerPatch',
-				{ id, ...compactInput(fields) },
-				{ itemIndex },
-			);
-			return output.customer ?? {};
+			return await patchCustomer(this, id, fields, itemIndex);
 		},
 		async delete({ itemIndex }) {
 			const id = getResourceId.call(this, 'customerId', itemIndex, 'Customer');
