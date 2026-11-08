@@ -62,7 +62,10 @@ export const CUSTOMER_FIELDS = `
 	modifiedAt
 `;
 
-function customerFieldOptions(): INodeProperties[] {
+function customerFieldOptions(includeName = false): INodeProperties[] {
+	const nameField: INodeProperties[] = includeName
+		? [{ displayName: 'Name', name: 'name', type: 'string', default: '' }]
+		: [];
 	return [
 		{
 			displayName: 'Address',
@@ -92,6 +95,7 @@ function customerFieldOptions(): INodeProperties[] {
 		},
 		{ displayName: 'Last Name', name: 'lastName', type: 'string', default: '' },
 		{ displayName: 'Mobile', name: 'mobile', type: 'string', default: '' },
+		...nameField,
 		{ displayName: 'Phone', name: 'phone', type: 'string', default: '' },
 		{
 			displayName: 'Shipping Details',
@@ -199,10 +203,7 @@ const description: INodeProperties[] = [
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: showFor(RESOURCE, ['update']),
-		options: [
-			...customerFieldOptions(),
-			{ displayName: 'Name', name: 'name', type: 'string', default: '' },
-		].sort((a, b) => a.displayName.localeCompare(b.displayName)),
+		options: customerFieldOptions(true),
 	},
 	...paginationFields(showFor(RESOURCE, ['getAll'])),
 	{
