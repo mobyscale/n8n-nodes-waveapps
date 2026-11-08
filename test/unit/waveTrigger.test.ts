@@ -222,6 +222,20 @@ describe('pollWave', () => {
 		expect(state.seen).toEqual([`new|${created.modifiedAt}`, `old|${updated.modifiedAt}`]);
 	});
 
+	it('returns simplified records when the Simplify option is on', async () => {
+		const changed = {
+			...record('a', LAST_POLL - 5000, LAST_POLL - 5000),
+			currency: { code: 'CAD', symbol: '$', name: 'Canadian Dollar' },
+		};
+		const { context } = createPollContext({
+			parameters: { options: { simplify: true } },
+			state: { lastPollAt: iso(LAST_POLL), configKey: `${BUSINESS_ID}|customer`, seen: [] },
+			pages: [[changed]],
+		});
+		const output = await pollWave.call(context);
+		expect(output).toEqual([[{ json: { ...changed, currency: 'CAD' } }]]);
+	});
+
 	it('returns nothing when all records were seen', async () => {
 		const seenRecord = record('a', LAST_POLL - 5000, LAST_POLL - 5000);
 		const { context } = createPollContext({
