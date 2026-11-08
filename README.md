@@ -21,6 +21,8 @@ Select a resource, then an operation. Fields that refer to Wave records (busines
 | Resource | Operations |
 |---|---|
 | [Business](docs/business.md) | Get, Get Invoice and Estimate Settings, Get Many |
+| [Estimate](docs/estimate.md) | Approve, Clone, Convert to Invoice, Create, Delete, Generate PDF, Get, Get Many, Mark Accepted, Mark Sent, Reset Acceptance, Send, Send Acceptance Email, Update |
+| [Estimate Deposit](docs/estimate-deposit.md) | Delete, Get, Record Manual Deposit, Send Receipt, Update |
 | [User](docs/user.md) | Get Current, Get OAuth Application |
 | [Reference Data](docs/reference-data.md) | Get Account Subtypes, Get Account Types, Get Countries, Get Country, Get Currencies, Get Currency, Get Province |
 
