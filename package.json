@@ -1,0 +1,64 @@
+{
+	"name": "n8n-nodes-waveapps",
+	"version": "0.1.0",
+	"description": "n8n community nodes for Wave accounting: businesses, customers, invoices, estimates, products, sales taxes, accounts and transactions through the Wave GraphQL API",
+	"license": "MIT",
+	"homepage": "https://github.com/octanesoftware/n8n-nodes-waveapps",
+	"keywords": [
+		"n8n-community-node-package",
+		"wave",
+		"waveapps",
+		"accounting",
+		"invoicing"
+	],
+	"author": {
+		"name": "Octane Software",
+		"email": "fisher1987@gmail.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/octanesoftware/n8n-nodes-waveapps.git"
+	},
+	"scripts": {
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"test": "vitest run",
+		"test:integration": "vitest run --config vitest.integration.config.mts",
+		"schema:update": "node scripts/introspect.mjs && npm run codegen",
+		"codegen": "graphql-codegen --config codegen.yml",
+		"release": "n8n-node release",
+		"prepublishOnly": "n8n-node prerelease"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"strict": true,
+		"credentials": [
+			"dist/credentials/WaveApi.credentials.js",
+			"dist/credentials/WaveOAuth2Api.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/Wave/Wave.node.js"
+		]
+	},
+	"devDependencies": {
+		"@graphql-codegen/cli": "^8.0.0",
+		"@graphql-codegen/typescript": "^7.0.0",
+		"@n8n/node-cli": "^0.55.5",
+		"eslint": "9.32.0",
+		"graphql": "^17.1.0",
+		"n8n-workflow": "^2.16.0",
+		"prettier": "3.6.2",
+		"release-it": "^21.1.0",
+		"typescript": "5.9.2",
+		"vitest": "^5.1.0"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	}
+}
