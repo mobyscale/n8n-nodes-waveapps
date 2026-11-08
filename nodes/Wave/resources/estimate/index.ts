@@ -12,6 +12,7 @@ import {
 	paginationFields,
 	resourceLocator,
 	showFor,
+	simplifyField,
 } from '../../shared/descriptions';
 import { afterCreateFields, runAfterCreate } from '../../shared/afterCreate';
 import { CURRENCY_FIELDS, MONEY_FIELDS, PAGE_INFO_FIELDS } from '../../shared/fields';
@@ -683,7 +684,7 @@ async function fillUnitPrices(
 
 export const estimateResource: ResourceModule = {
 	option: { name: 'Estimate', value: RESOURCE },
-	description,
+	description: [...description, simplifyField(RESOURCE, ['get', 'getAll'])],
 	operations: {
 		async create({ itemIndex }) {
 			const businessId = getBusinessId.call(this, itemIndex);

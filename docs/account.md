@@ -14,6 +14,8 @@ All operations have a **Business** field. To pick an account, use the **Account*
 | Get Many | Get the accounts of the chart of accounts |
 | Update | Change the name, description or display ID of an account |
 
+Get and Get Many have a **Simplify** option. It is off by default. When you turn it on, the node returns flat values that you can write to a spreadsheet. See [Simplify](development.md#simplify).
+
 ## Fields
 
 | Field | Used in | Description |

@@ -21,6 +21,8 @@ An estimate is a price offer for a customer. It lists products, quantities and p
 | Send Acceptance Email | Send the customer an email that confirms the acceptance |
 | Update | Change an estimate |
 
+Get and Get Many have a **Simplify** option. It is off by default. When you turn it on, the node returns flat values that you can write to a spreadsheet. See [Simplify](development.md#simplify).
+
 Most operations have a **Business** field and an **Estimate** field. Select the estimate from the list or use its ID.
 
 ## Create

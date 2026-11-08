@@ -5,6 +5,7 @@ import {
 	paginationFields,
 	resourceLocator,
 	showFor,
+	simplifyField,
 } from '../../shared/descriptions';
 import { ADDRESS_FIELDS, CURRENCY_FIELDS, PAGE_INFO_FIELDS } from '../../shared/fields';
 import { getBusinessId, getResourceId, toDateTime } from '../../shared/utils';
@@ -108,7 +109,7 @@ const description: INodeProperties[] = [
 
 export const vendorResource: ResourceModule = {
 	option: { name: 'Vendor', value: RESOURCE },
-	description,
+	description: [...description, simplifyField(RESOURCE, ['get', 'getAll'])],
 	operations: {
 		async get({ itemIndex }: OperationContext) {
 			const businessId = getBusinessId.call(this, itemIndex);

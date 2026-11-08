@@ -7,6 +7,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import { toBusinessId } from '../Wave/shared/ids';
+import { simplifyRecord } from '../Wave/shared/simplify';
 import { waveGetAll, type WaveConnection } from '../Wave/transport';
 import {
 	buildListQuery,
@@ -144,9 +145,13 @@ export async function pollWave(this: IPollFunctions): Promise<INodeExecutionData
 	const config = RESOURCES[resource];
 	const filterVariables = getFilterVariables(resource, filters, businessId);
 
+	const options = this.getNodeParameter('options', {}) as IDataObject;
+	const output = (records: WaveRecord[]) =>
+		this.helpers.returnJsonArray(options.simplify ? records.map(simplifyRecord) : records);
+
 	if (this.getMode() === 'manual') {
 		const record = await getNewestRecord(this, resource, businessId, filterVariables, event);
-		return record ? [this.helpers.returnJsonArray([record])] : null;
+		return record ? [output([record])] : null;
 	}
 
 	const state = this.getWorkflowStaticData('node') as TriggerState;
@@ -179,5 +184,5 @@ export async function pollWave(this: IPollFunctions): Promise<INodeExecutionData
 	});
 	state.lastPollAt = new Date(nowMs).toISOString();
 	state.seen = result.seen;
-	return result.records.length ? [this.helpers.returnJsonArray(result.records)] : null;
+	return result.records.length ? [output(result.records)] : null;
 }

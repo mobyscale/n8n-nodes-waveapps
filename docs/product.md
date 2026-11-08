@@ -14,6 +14,8 @@ All operations have a **Business** field. To pick a product, use the **Product**
 | Get Many | Get products and services. You can filter and sort the list |
 | Update | Change a product or service |
 
+Get and Get Many have a **Simplify** option. It is off by default. When you turn it on, the node returns flat values that you can write to a spreadsheet. See [Simplify](development.md#simplify).
+
 ## Fields
 
 | Field | Used in | Description |
