@@ -266,7 +266,7 @@ const description: INodeProperties[] = [
 		default: '',
 		placeholder: 'e.g. bank-feed-12345',
 		description:
-			'Your ID for the transaction, for example the ID in the source system. Wave rejects a second transaction with the same External ID, so a repeated run cannot create a duplicate. When empty, the node uses a random ID.',
+			'Your ID for the transaction, for example the ID in the source system. Wave rejects a second transaction with the same External ID, so a repeated run cannot create a duplicate. When empty, the node makes an ID as set in the External ID When Empty option.',
 		displayOptions: show(),
 	},
 	{
@@ -324,6 +324,26 @@ const description: INodeProperties[] = [
 				description:
 					'The number of transactions in one request. Wave can time out on large batches.',
 				displayOptions: { show: { '/operation': ['createMany'] } },
+			},
+			{
+				displayName: 'External ID When Empty',
+				name: 'externalIdWhenEmpty',
+				type: 'options',
+				default: 'random',
+				options: [
+					{
+						name: 'Generate From Transaction Data',
+						value: 'generate',
+						description:
+							'Make the same ID from the anchor account, date, direction, amount and description each time, so that an import that runs again does not create duplicates. Two real transactions with all of these values the same also get the same ID.',
+					},
+					{
+						name: 'Random ID',
+						value: 'random',
+						description:
+							'Make a new ID each time. A run that is repeated creates the transactions again.',
+					},
+				],
 			},
 			{
 				displayName: 'Skip Duplicates',
@@ -384,12 +404,21 @@ export const transactionResource: ResourceModule = {
 			const results: INodeExecutionData[][] = items.map(() => []);
 			const entries: BatchEntry[] = [];
 			const seen = new Set<string>();
+			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const skipDuplicates = options.skipDuplicates === true;
 
 			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 				try {
 					const businessId = getBusinessId.call(this, itemIndex);
 					const details = readTransactionDetails.call(this, itemIndex);
 					const key = `${businessId} ${details.externalId}`;
+					if (seen.has(key) && skipDuplicates) {
+						results[itemIndex].push({
+							json: skippedResult(details.externalId),
+							pairedItem: { item: itemIndex },
+						});
+						continue;
+					}
 					if (seen.has(key)) {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -406,9 +435,7 @@ export const transactionResource: ResourceModule = {
 				}
 			}
 
-			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 			const batchSize = (options.batchSize as number | undefined) ?? DEFAULT_BATCH_SIZE;
-			const skipDuplicates = options.skipDuplicates === true;
 
 			for (const batch of planBatches(entries, batchSize)) {
 				const firstIndex = batch.entries[0].itemIndex;

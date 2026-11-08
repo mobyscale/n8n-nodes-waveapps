@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -85,6 +85,31 @@ export function buildSimpleTransaction(input: SimpleTransactionInput): {
 	};
 }
 
+export interface ExternalIdSource {
+	anchorAccountId: string;
+	date: string;
+	direction: TransactionDirection;
+	amount: string;
+	description: string;
+}
+
+/**
+ * A stable External ID from the data that identifies a bank row, so that an import that runs
+ * again gives the same IDs and Wave rejects the repeats. The category accounts are left out on
+ * purpose: a row that gets a different category on the next run is still the same row.
+ */
+export function generateExternalId(source: ExternalIdSource): string {
+	const amount = Number(source.amount);
+	const normalized = [
+		source.anchorAccountId.trim(),
+		source.date,
+		source.direction,
+		Number.isFinite(amount) ? amount.toFixed(2) : source.amount.trim(),
+		source.description.trim().replace(/\s+/g, ' ').toLowerCase(),
+	].join('|');
+	return `n8n-${createHash('sha256').update(normalized).digest('hex').slice(0, 40)}`;
+}
+
 /** Reads the node parameters of one item and builds the Wave transaction input. */
 export function readTransactionDetails(
 	this: IExecuteFunctions,
@@ -105,8 +130,8 @@ export function readTransactionDetails(
 			itemIndex,
 		});
 	}
-	const externalId =
-		String(this.getNodeParameter('externalId', itemIndex, '')).trim() || randomUUID();
+	const externalIdInput = String(this.getNodeParameter('externalId', itemIndex, '')).trim();
+	const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 
 	let entries: Pick<MoneyTransactionDetails, 'anchor' | 'lineItems'>;
 	if (mode === 'advanced') {
@@ -134,6 +159,20 @@ export function readTransactionDetails(
 			customerId: getLocatorValue(additionalFields.customerId),
 			taxes: buildTaxes(additionalFields.salesTaxes),
 		});
+	}
+
+	let externalId = externalIdInput;
+	if (!externalId) {
+		externalId =
+			options.externalIdWhenEmpty === 'generate'
+				? generateExternalId({
+						anchorAccountId,
+						date,
+						direction: entries.anchor.direction,
+						amount: entries.anchor.amount,
+						description,
+					})
+				: randomUUID();
 	}
 
 	return compactInput({
