@@ -70,6 +70,14 @@ export class Wave implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
+		// Resource and operation do not accept expressions, so item 0 has the values for all items.
+		if (items.length) {
+			const resourceName = this.getNodeParameter('resource', 0) as string;
+			const operationName = this.getNodeParameter('operation', 0) as string;
+			const batchHandler = resourceMap.get(resourceName)?.batchOperations?.[operationName];
+			if (batchHandler) return [await batchHandler.call(this, { items })];
+		}
+
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const resourceName = this.getNodeParameter('resource', itemIndex) as string;
