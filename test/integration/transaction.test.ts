@@ -183,6 +183,73 @@ describe.skipIf(!hasConfig)('transaction', () => {
 		await expect(runNode(parameters)).rejects.toThrow('same externalId already exists');
 	});
 
+	it('skips a duplicate External ID in Create when Skip Duplicates is on', async () => {
+		const externalId = uniqueName('skip');
+		const parameters = {
+			...base(),
+			mode: 'simple',
+			transactionType: 'expense',
+			expenseAccountId: rl(expenseId),
+			description: uniqueName('skip'),
+			amount: 1.5,
+			externalId,
+			additionalFields: {},
+		};
+		const [first] = await runNode(parameters);
+		expectCreated(first);
+
+		const [again] = await runNode({ ...parameters, options: { skipDuplicates: true } });
+		expect(again).toEqual({ skipped: true, reason: 'duplicate externalId', externalId });
+	});
+
+	it('creates many and skips the entry that exists when Skip Duplicates is on', async () => {
+		const prefix = uniqueName('many');
+		const existingId = `${prefix}-1`;
+		const common = {
+			...base(),
+			mode: 'simple',
+			transactionType: 'expense',
+			expenseAccountId: rl(expenseId),
+			description: uniqueName('many'),
+			amount: 1.75,
+			additionalFields: {},
+		};
+		const [seed] = await runNode({ ...common, externalId: existingId });
+		expectCreated(seed);
+
+		const items = [0, 1, 2].map((index) => ({ json: { index } }));
+		const context = createExecuteContext(
+			{
+				...common,
+				operation: 'createMany',
+				externalId: '={{ $json.index }}',
+				options: { skipDuplicates: true },
+			},
+			items,
+		);
+		const original = context.getNodeParameter;
+		context.getNodeParameter = ((name: string, itemIndex: number, ...rest: unknown[]) =>
+			name === 'externalId'
+				? `${prefix}-${itemIndex}`
+				: (original as (...args: unknown[]) => unknown).call(
+						context,
+						name,
+						itemIndex,
+						...rest,
+					)) as typeof context.getNodeParameter;
+		const [output] = await new Wave().execute.call(context);
+
+		expect(output.map((item) => item.pairedItem)).toEqual([{ item: 0 }, { item: 1 }, { item: 2 }]);
+		expect(output.filter((item) => item.json.skipped === true)).toHaveLength(1);
+		expect(output[1].json).toEqual({
+			skipped: true,
+			reason: 'duplicate externalId',
+			externalId: existingId,
+		});
+		expectCreated(output[0].json);
+		expectCreated(output[2].json);
+	});
+
 	it('creates an advanced entry with two line items', async () => {
 		const [result] = await runNode({
 			...base(),

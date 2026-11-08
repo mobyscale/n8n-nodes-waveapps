@@ -64,6 +64,59 @@ describe.skipIf(!hasConfig)('customer', () => {
 		});
 	});
 
+	function trackDelete(id: string) {
+		cleanup.add(`delete ${id}`, async () => {
+			await runNode({
+				...(await base()),
+				operation: 'delete',
+				customerId: rl(id),
+			}).catch(() => undefined);
+		});
+	}
+
+	it('creates, then updates, a customer with Create or Update by email', async () => {
+		const name = uniqueName('upsert');
+		const email = `n8n-test-${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;
+		const parameters = async (phone: string) => ({
+			...(await base()),
+			operation: 'upsert',
+			matchBy: 'email',
+			name,
+			additionalFields: { email, phone },
+		});
+
+		const [first] = await runNode(await parameters('5551110001'));
+		const id = first.id as string;
+		trackDelete(id);
+		expect(first).toMatchObject({ name, email, phone: '5551110001' });
+
+		const [second] = await runNode(await parameters('5551110002'));
+		expect(second.id).toBe(id);
+		expect(second.phone).toBe('5551110002');
+
+		const [fetched] = await runNode({ ...(await base()), operation: 'get', customerId: rl(id) });
+		expect(fetched).toMatchObject({ id, name, email, phone: '5551110002' });
+	});
+
+	it('creates, then updates, a customer with Create or Update by name', async () => {
+		const name = uniqueName('upsert name');
+		const parameters = async (phone: string, matchName: string) => ({
+			...(await base()),
+			operation: 'upsert',
+			matchBy: 'name',
+			name: matchName,
+			additionalFields: { phone },
+		});
+
+		const [first] = await runNode(await parameters('5552220001', name));
+		const id = first.id as string;
+		trackDelete(id);
+
+		const [second] = await runNode(await parameters('5552220002', ` ${name.toUpperCase()} `));
+		expect(second.id).toBe(id);
+		expect(second.phone).toBe('5552220002');
+	});
+
 	it('gets, lists, updates and deletes a customer', async () => {
 		const { name, customer } = await createCustomer({ email: 'flow@example.com' });
 		const id = customer.id as string;
