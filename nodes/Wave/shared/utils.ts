@@ -110,3 +110,10 @@ export function getLocatorValue(value: unknown): string | undefined {
 	}
 	return String(value);
 }
+
+/** Turns a date or date time value from a node parameter into an ISO 8601 string with a time zone. */
+export function toDateTime(value: unknown): string | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+	const date = new Date(String(value));
+	return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
+}
