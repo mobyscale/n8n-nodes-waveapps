@@ -5,8 +5,6 @@ import {
 	buildInvoiceFields,
 	buildItems,
 	buildTaxes,
-	splitEmails,
-	toDate,
 } from '../../nodes/Wave/resources/invoice/builders';
 
 const rl = (value: string) => ({ __rl: true, mode: 'list', value });
@@ -103,16 +101,5 @@ describe('buildInvoiceFields', () => {
 
 	it('does not send items when the list is empty', () => {
 		expect(buildInvoiceFields({ items: {} })).toEqual({});
-	});
-});
-
-describe('helpers', () => {
-	it('splits email lists', () => {
-		expect(splitEmails('a@x.com, b@x.com;\n c@x.com ,')).toEqual(['a@x.com', 'b@x.com', 'c@x.com']);
-	});
-
-	it('cuts a date time to a date', () => {
-		expect(toDate('2026-01-02T03:04:05.000Z')).toBe('2026-01-02');
-		expect(toDate('')).toBeUndefined();
 	});
 });

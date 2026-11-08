@@ -13,7 +13,6 @@ import {
 	buildLineItems,
 	buildSimpleTransaction,
 	readTransactionDetails,
-	toWaveDate,
 } from '../../nodes/Wave/resources/transaction/input';
 
 const node = {
@@ -225,16 +224,6 @@ describe('advanced mode', () => {
 		expect(details.anchor).toEqual({ accountId: 'bank', amount: '10', direction: 'DEPOSIT' });
 		expect(details.lineItems).toEqual([{ accountId: 'sales', amount: '10', balance: 'CREDIT' }]);
 		expect(() => readTransactionDetails.call(context, 1)).toThrow('account for each line item');
-	});
-});
-
-describe('toWaveDate', () => {
-	it('keeps only the date', () => {
-		expect(toWaveDate('2026-11-01T23:30:00')).toBe('2026-11-01');
-		expect(toWaveDate('2026-11-01')).toBe('2026-11-01');
-		expect(toWaveDate(new Date('2026-11-01T10:00:00Z'))).toBe('2026-11-01');
-		expect(toWaveDate('')).toBeUndefined();
-		expect(toWaveDate('yesterday')).toBeUndefined();
 	});
 });
 

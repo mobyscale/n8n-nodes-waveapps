@@ -3,7 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { searchConnection } from '../../nodes/Wave/methods/searchHelpers';
 import { enumOptions, toDisplayName } from '../../nodes/Wave/shared/descriptions';
-import { compactInput, getLocatorValue, toDateTime } from '../../nodes/Wave/shared/utils';
+import {
+	compactInput,
+	fixedCollectionValues,
+	getLocatorValue,
+	splitList,
+	toDate,
+	toDateTime,
+} from '../../nodes/Wave/shared/utils';
 
 describe('compactInput', () => {
 	it('removes empty values and empty nested objects', () => {
@@ -97,5 +104,55 @@ describe('toDateTime', () => {
 	it('returns undefined for empty values', () => {
 		expect(toDateTime('')).toBeUndefined();
 		expect(toDateTime(undefined)).toBeUndefined();
+	});
+});
+
+describe('toDate', () => {
+	it('keeps only the date', () => {
+		expect(toDate('2026-11-01T23:30:00')).toBe('2026-11-01');
+		expect(toDate('2026-11-01')).toBe('2026-11-01');
+		expect(toDate(' 2026-11-01 ')).toBe('2026-11-01');
+		expect(toDate(new Date('2026-11-01T10:00:00Z'))).toBe('2026-11-01');
+	});
+
+	it('returns undefined for empty or invalid values', () => {
+		expect(toDate('')).toBeUndefined();
+		expect(toDate(undefined)).toBeUndefined();
+		expect(toDate(null)).toBeUndefined();
+		expect(toDate('yesterday')).toBeUndefined();
+		expect(toDate(new Date('invalid'))).toBeUndefined();
+	});
+});
+
+describe('splitList', () => {
+	it('splits on commas, semicolons and line breaks and drops empty values', () => {
+		expect(splitList('a@x.com, b@x.com;\n c@x.com ,')).toEqual(['a@x.com', 'b@x.com', 'c@x.com']);
+		expect(splitList('a\r\nb')).toEqual(['a', 'b']);
+	});
+
+	it('trims list entries', () => {
+		expect(splitList(['a', ' b ', ''])).toEqual(['a', 'b']);
+	});
+
+	it('returns an empty list for empty values', () => {
+		expect(splitList('')).toEqual([]);
+		expect(splitList(undefined)).toEqual([]);
+	});
+});
+
+describe('fixedCollectionValues', () => {
+	it('returns the entries of a list', () => {
+		expect(fixedCollectionValues({ values: [{ a: 1 }, { a: 2 }] })).toEqual([{ a: 1 }, { a: 2 }]);
+	});
+
+	it('turns a single object into a one entry list', () => {
+		expect(fixedCollectionValues({ itemValues: { a: 1 } }, 'itemValues')).toEqual([{ a: 1 }]);
+	});
+
+	it('returns an empty list when the key is missing or the value is empty', () => {
+		expect(fixedCollectionValues({}, 'itemValues')).toEqual([]);
+		expect(fixedCollectionValues({ other: [{ a: 1 }] })).toEqual([]);
+		expect(fixedCollectionValues(undefined)).toEqual([]);
+		expect(fixedCollectionValues('text')).toEqual([]);
 	});
 });

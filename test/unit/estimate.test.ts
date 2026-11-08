@@ -7,30 +7,10 @@ import {
 	buildItems,
 	buildListVariables,
 	buildPatchInput,
-	splitList,
-	toDate,
-	toDateTime,
 	type CurrentEstimate,
 } from '../../nodes/Wave/resources/estimate/inputs';
 
 const rl = (value: string) => ({ __rl: true, mode: 'list', value });
-
-describe('date helpers', () => {
-	it('formats dates and date times', () => {
-		expect(toDate('2026-03-04T10:00:00.000Z')).toBe('2026-03-04');
-		expect(toDate('')).toBeUndefined();
-		expect(toDateTime('2026-03-04T10:00:00Z')).toBe('2026-03-04T10:00:00.000Z');
-		expect(toDateTime(undefined)).toBeUndefined();
-	});
-});
-
-describe('splitList', () => {
-	it('splits strings and lists', () => {
-		expect(splitList('a@x.com, b@x.com\nc@x.com')).toEqual(['a@x.com', 'b@x.com', 'c@x.com']);
-		expect(splitList(['a', ' b '])).toEqual(['a', 'b']);
-		expect(splitList('')).toEqual([]);
-	});
-});
 
 describe('buildItems', () => {
 	it('maps items and removes empty values', () => {
