@@ -21,7 +21,9 @@ Select a resource, then an operation. Fields that refer to Wave records (busines
 | Resource | Operations |
 |---|---|
 | [Business](docs/business.md) | Get, Get Invoice and Estimate Settings, Get Many |
+| [Customer](docs/customer.md) | Create, Delete, Get, Get Many, Update |
 | [User](docs/user.md) | Get Current, Get OAuth Application |
+| [Vendor](docs/vendor.md) | Get, Get Many |
 | [Reference Data](docs/reference-data.md) | Get Account Subtypes, Get Account Types, Get Countries, Get Country, Get Currencies, Get Currency, Get Province |
 
 ## Compatibility
