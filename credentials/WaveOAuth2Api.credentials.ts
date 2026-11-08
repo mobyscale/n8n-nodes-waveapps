@@ -24,7 +24,7 @@ export class WaveOAuth2Api implements ICredentialType {
 	extends = ['oAuth2Api'];
 
 	documentationUrl =
-		'https://github.com/octanesoftware/n8n-nodes-waveapps/blob/main/docs/credentials.md';
+		'https://github.com/mobyscale/n8n-nodes-waveapps/blob/main/docs/credentials.md';
 
 	properties: INodeProperties[] = [
 		{

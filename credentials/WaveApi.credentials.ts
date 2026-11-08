@@ -14,7 +14,7 @@ export class WaveApi implements ICredentialType {
 	icon: Icon = { light: 'file:../nodes/Wave/wave.svg', dark: 'file:../nodes/Wave/wave.dark.svg' };
 
 	documentationUrl =
-		'https://github.com/octanesoftware/n8n-nodes-waveapps/blob/main/docs/credentials.md';
+		'https://github.com/mobyscale/n8n-nodes-waveapps/blob/main/docs/credentials.md';
 
 	properties: INodeProperties[] = [
 		{
