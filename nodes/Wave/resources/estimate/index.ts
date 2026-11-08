@@ -17,6 +17,7 @@ import { afterCreateFields, runAfterCreate } from '../../shared/afterCreate';
 import { CURRENCY_FIELDS, MONEY_FIELDS, PAGE_INFO_FIELDS } from '../../shared/fields';
 import { toWaveId } from '../../shared/ids';
 import { itemsField } from '../../shared/lineItems';
+import { downloadPdf } from '../../shared/pdf';
 import { getProductMatchConfig, resolveItemProducts } from '../../shared/productMatching';
 import {
 	compactInput,
@@ -153,54 +154,54 @@ const customerLocator = (displayOptions?: INodeProperties['displayOptions']) =>
 
 /** Optional fields of the Send operation. "After Create" with Approve and Send uses them too. */
 const sendOptionFields: INodeProperties[] = [
-		{
-			displayName: 'Attach PDF',
-			name: 'attachPDF',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to attach a PDF of the estimate',
-		},
-		{
-			displayName: 'CC Myself',
-			name: 'ccMyself',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to send a copy to the sender',
-		},
-		{
-			displayName: 'From Address',
-			name: 'fromAddress',
-			type: 'string',
-			default: '',
-			description: 'The address that the email comes from',
-		},
-		{
-			displayName: 'Hide Grand Total',
-			name: 'hideGrandTotal',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to hide the grand total in the email',
-		},
-		{
-			displayName: 'Include Attachments',
-			name: 'includeAttachments',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to include the attachments of the estimate in the email',
-		},
-		{
-			displayName: 'Message',
-			name: 'message',
-			type: 'string',
-			typeOptions: { rows: 4 },
-			default: '',
-		},
-		{
-			displayName: 'Subject',
-			name: 'subject',
-			type: 'string',
-			default: '',
-		},
+	{
+		displayName: 'Attach PDF',
+		name: 'attachPDF',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to attach a PDF of the estimate',
+	},
+	{
+		displayName: 'CC Myself',
+		name: 'ccMyself',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to send a copy to the sender',
+	},
+	{
+		displayName: 'From Address',
+		name: 'fromAddress',
+		type: 'string',
+		default: '',
+		description: 'The address that the email comes from',
+	},
+	{
+		displayName: 'Hide Grand Total',
+		name: 'hideGrandTotal',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to hide the grand total in the email',
+	},
+	{
+		displayName: 'Include Attachments',
+		name: 'includeAttachments',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to include the attachments of the estimate in the email',
+	},
+	{
+		displayName: 'Message',
+		name: 'message',
+		type: 'string',
+		typeOptions: { rows: 4 },
+		default: '',
+	},
+	{
+		displayName: 'Subject',
+		name: 'subject',
+		type: 'string',
+		default: '',
+	},
 ];
 
 const description: INodeProperties[] = [
@@ -883,16 +884,10 @@ export const estimateResource: ResourceModule = {
 			if (!this.getNodeParameter('downloadPdf', itemIndex, false) || !output.pdfUrl) return json;
 
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
-			const content = (await this.helpers.httpRequest({
-				method: 'GET',
-				url: output.pdfUrl,
-				encoding: 'arraybuffer',
-				json: false,
-			})) as ArrayBuffer;
-			const binary = await this.helpers.prepareBinaryData(
-				Buffer.from(content),
+			const binary = await downloadPdf(
+				this,
+				output.pdfUrl,
 				`estimate-${estimateId.slice(-12)}.pdf`,
-				'application/pdf',
 			);
 			const result: INodeExecutionData = { json, binary: { [binaryPropertyName]: binary } };
 			return [result];
