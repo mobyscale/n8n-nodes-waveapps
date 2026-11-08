@@ -43,7 +43,8 @@
 			"dist/credentials/WaveOAuth2Api.credentials.js"
 		],
 		"nodes": [
-			"dist/nodes/Wave/Wave.node.js"
+			"dist/nodes/Wave/Wave.node.js",
+			"dist/nodes/WaveTrigger/WaveTrigger.node.js"
 		]
 	},
 	"devDependencies": {
