@@ -208,6 +208,16 @@ export async function waveMutation<T extends WaveMutationOutput>(
 			itemIndex: options.itemIndex,
 		});
 	}
+	return assertMutationSucceeded(ctx, output, field, options);
+}
+
+/** Throws a node error with the input errors when a mutation output has `didSucceed: false`. */
+export function assertMutationSucceeded<T extends WaveMutationOutput>(
+	ctx: WaveContext,
+	output: T,
+	field: string,
+	options: WaveRequestOptions = {},
+): T {
 	if (!output.didSucceed) {
 		const inputErrors = output.inputErrors ?? [];
 		throw new NodeApiError(ctx.getNode(), output as unknown as JsonObject, {

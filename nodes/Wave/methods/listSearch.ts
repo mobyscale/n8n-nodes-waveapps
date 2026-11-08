@@ -1,7 +1,12 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import type { WaveConnection } from '../transport';
-import { getSelectedBusinessId, PAYMENT_ACCOUNT_SUBTYPES, searchConnection } from './searchHelpers';
+import {
+	ANCHOR_ACCOUNT_SUBTYPES,
+	getSelectedBusinessId,
+	PAYMENT_ACCOUNT_SUBTYPES,
+	searchConnection,
+} from './searchHelpers';
 
 type Node = IDataObject & { id: string; name: string };
 
@@ -282,6 +287,19 @@ export async function searchPaymentAccounts(
 	return await searchAccountsWith(
 		this,
 		{ subtypes: PAYMENT_ACCOUNT_SUBTYPES },
+		filter,
+		paginationToken,
+	);
+}
+
+export async function searchAnchorAccounts(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchAccountsWith(
+		this,
+		{ subtypes: ANCHOR_ACCOUNT_SUBTYPES },
 		filter,
 		paginationToken,
 	);

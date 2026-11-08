@@ -17,9 +17,23 @@ export type OperationHandler = (
 	context: OperationContext,
 ) => Promise<OperationResult>;
 
+export interface BatchOperationContext {
+	items: INodeExecutionData[];
+}
+
+/**
+ * Gets all input items in one call, for operations that send one request for many items.
+ * The handler sets pairedItem on each output item and handles continueOnFail itself.
+ */
+export type BatchOperationHandler = (
+	this: IExecuteFunctions,
+	context: BatchOperationContext,
+) => Promise<INodeExecutionData[]>;
+
 export interface ResourceModule {
 	option: INodePropertyOptions;
 	/** The first entry must be the resource's "operation" property. */
 	description: INodeProperties[];
 	operations: Record<string, OperationHandler>;
+	batchOperations?: Record<string, BatchOperationHandler>;
 }
