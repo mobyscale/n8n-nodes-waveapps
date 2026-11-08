@@ -35,3 +35,15 @@ export function planBatches(entries: BatchEntry[], batchSize: number): Batch[] {
 	}
 	return batches;
 }
+
+/**
+ * Wave words the duplicate error as "A transaction with the same externalId already exists".
+ * It comes as a GraphQL error or as an input error, so the check reads the whole message text.
+ */
+export function isDuplicateExternalIdError(error: unknown): boolean {
+	const candidate = error as { message?: unknown; description?: unknown } | null;
+	const text = [candidate?.message, candidate?.description]
+		.filter((part): part is string => typeof part === 'string')
+		.join('\n');
+	return /same\s+external\s?id/i.test(text);
+}

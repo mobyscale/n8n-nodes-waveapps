@@ -8,7 +8,11 @@ import { NodeApiError } from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Wave } from '../../nodes/Wave/Wave.node';
-import { planBatches, type BatchEntry } from '../../nodes/Wave/resources/transaction/batch';
+import {
+	isDuplicateExternalIdError,
+	planBatches,
+	type BatchEntry,
+} from '../../nodes/Wave/resources/transaction/batch';
 import {
 	buildLineItems,
 	buildSimpleTransaction,
@@ -340,5 +344,142 @@ describe('create many', () => {
 			[{ data: { moneyTransactionsCreate: { didSucceed: false, inputErrors: [] } } }],
 		);
 		await expect(run(context)).rejects.toBeInstanceOf(NodeApiError);
+	});
+});
+
+describe('skip duplicates', () => {
+	const duplicateMessage = 'A transaction with the same externalId already exists.';
+	const batchFailed = {
+		data: {
+			moneyTransactionsCreate: {
+				didSucceed: false,
+				inputErrors: [{ code: 'INVALID', message: duplicateMessage, path: ['input'] }],
+				transactions: null,
+			},
+		},
+	};
+	const singleOk = (id: string) => ({
+		data: { moneyTransactionCreate: { didSucceed: true, inputErrors: [], transaction: { id } } },
+	});
+	const singleDuplicate = {
+		errors: [{ message: duplicateMessage, extensions: { code: 'INTERNAL_SERVER_ERROR' } }],
+		data: null,
+	};
+	const singleOtherError = {
+		data: {
+			moneyTransactionCreate: {
+				didSucceed: false,
+				inputErrors: [{ code: 'INVALID', message: 'This value is invalid', path: ['input'] }],
+				transaction: null,
+			},
+		},
+	};
+	const skipped = (externalId: string) => ({
+		skipped: true,
+		reason: 'duplicate externalId',
+		externalId,
+	});
+
+	it('detects the duplicate message in a case-insensitive way', () => {
+		expect(
+			isDuplicateExternalIdError({ message: 'x', description: 'Same ExternalId exists' }),
+		).toBe(true);
+		expect(isDuplicateExternalIdError(new Error(duplicateMessage))).toBe(true);
+		expect(isDuplicateExternalIdError(new Error('This value is invalid'))).toBe(false);
+		expect(isDuplicateExternalIdError(undefined)).toBe(false);
+	});
+
+	it('create returns a skipped item for a duplicate when the option is on', async () => {
+		const item = expenseItem({
+			operation: 'create',
+			externalId: 'e0',
+			options: { skipDuplicates: true },
+		});
+		const { context } = createContext([item], [singleDuplicate]);
+		expect(await run(context)).toEqual([{ json: skipped('e0'), pairedItem: { item: 0 } }]);
+	});
+
+	it('create fails for a duplicate when the option is off, and for other errors', async () => {
+		const off = createContext(
+			[expenseItem({ operation: 'create', externalId: 'e0' })],
+			[singleDuplicate],
+		);
+		await expect(run(off.context)).rejects.toThrow('same externalId');
+		const other = createContext(
+			[expenseItem({ operation: 'create', options: { skipDuplicates: true } })],
+			[singleOtherError],
+		);
+		await expect(run(other.context)).rejects.toThrow('This value is invalid');
+	});
+
+	it('create many sends a failed batch again one entry at a time', async () => {
+		const options = { batchSize: 3, skipDuplicates: true };
+		const items = [
+			expenseItem({ externalId: 'e0', options }),
+			expenseItem({ externalId: 'e1' }),
+			expenseItem({ externalId: 'e2' }),
+		];
+		const { context, request } = createContext(items, [
+			batchFailed,
+			singleOk('t0'),
+			singleDuplicate,
+			singleOk('t2'),
+		]);
+		const output = await run(context);
+
+		expect(request).toHaveBeenCalledTimes(4);
+		expect(output.map((item) => [item.pairedItem, item.json])).toEqual([
+			[{ item: 0 }, { didSucceed: true, transaction: { id: 't0' }, externalId: 'e0' }],
+			[{ item: 1 }, skipped('e1')],
+			[{ item: 2 }, { didSucceed: true, transaction: { id: 't2' }, externalId: 'e2' }],
+		]);
+	});
+
+	it('create many keeps pairedItem correct across businesses and invalid items', async () => {
+		const options = { batchSize: 5, skipDuplicates: true };
+		const items = [
+			expenseItem({ externalId: 'e0', options }),
+			expenseItem({ externalId: 'e1', businessId: rl(BUSINESS_B) }),
+			expenseItem({ externalId: 'e2', description: '' }),
+			expenseItem({ externalId: 'e3' }),
+		];
+		const { context } = createContext(
+			items,
+			[batchFailed, singleDuplicate, singleOk('t3'), batchResponse(['t1'])],
+			{ continueOnFail: true },
+		);
+		const output = await run(context);
+		expect(output.map((item) => [item.pairedItem, item.json])).toEqual([
+			[{ item: 0 }, skipped('e0')],
+			[{ item: 1 }, { didSucceed: true, transaction: { id: 't1' }, externalId: 'e1' }],
+			[{ item: 2 }, { error: expect.stringContaining('description') }],
+			[{ item: 3 }, { didSucceed: true, transaction: { id: 't3' }, externalId: 'e3' }],
+		]);
+	});
+
+	it('create many follows continue on fail for other errors', async () => {
+		const options = { batchSize: 2, skipDuplicates: true };
+		const items = [expenseItem({ externalId: 'e0', options }), expenseItem({ externalId: 'e1' })];
+		const responses = [batchFailed, singleOtherError, singleOk('t1')];
+
+		const kept = createContext(items, responses, { continueOnFail: true });
+		const output = await run(kept.context);
+		expect(
+			output.map((item) => [item.pairedItem, item.json.error ?? item.json.transaction]),
+		).toEqual([
+			[{ item: 0 }, expect.stringContaining('This value is invalid')],
+			[{ item: 1 }, { id: 't1' }],
+		]);
+
+		const strict = createContext(items, responses);
+		await expect(run(strict.context)).rejects.toBeInstanceOf(NodeApiError);
+	});
+
+	it('create many does not send entries again when the option is off', async () => {
+		const { context, request } = createContext([expenseItem({ externalId: 'e0' })], [batchFailed], {
+			continueOnFail: true,
+		});
+		await run(context);
+		expect(request).toHaveBeenCalledTimes(1);
 	});
 });
