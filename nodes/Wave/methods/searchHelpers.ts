@@ -85,3 +85,21 @@ export const PAYMENT_ACCOUNT_SUBTYPES = [
 	'MONEY_IN_TRANSIT',
 	'LOANS',
 ];
+
+/**
+ * Subtypes that Wave accepts as the anchor of a money transaction (found by tests against the
+ * API). Wave rejects receivable, payable, payroll, retained earnings, income and expense accounts.
+ */
+export const ANCHOR_ACCOUNT_SUBTYPES = [
+	...PAYMENT_ACCOUNT_SUBTYPES,
+	'CUSTOMER_PREPAYMENTS_AND_CREDITS',
+	'DUE_TO_YOU_AND_OTHER_OWNERS',
+	'INVENTORY',
+	'NON_RETAINED_EARNINGS',
+	'OTHER_CURRENT_ASSETS',
+	'OTHER_CURRENT_LIABILITY',
+	'OTHER_LONG_TERM_ASSETS',
+	'OTHER_LONG_TERM_LIABILITY',
+	'PROPERTY_PLANT_EQUIPMENT',
+	'VENDOR_PREPAYMENTS_AND_CREDITS',
+];
