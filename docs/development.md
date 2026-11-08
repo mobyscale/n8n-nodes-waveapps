@@ -136,10 +136,10 @@ Run `npm run lint`, `npm run build`, `npm test` and `npm run test:integration`. 
 | Workflow | When | What it does |
 |---|---|---|
 | `ci.yml` | Each pull request and each push to `main` | Lint, build and unit tests. Uses no secrets |
-| `integration.yml` | Each push to `main`, by hand, and on a schedule | Integration tests against the Wave test account (Mondays), and a daily check of the Wave schema against `schema/wave.graphql` |
-| `publish.yml` | A version tag | Publishes to npm (see [Release](#release)) |
+| `integration.yml` | Each push to `main` (a merged pull request) | Integration tests against the Wave test account |
+| `publish.yml` | A version tag | Unit and integration tests, then lint, build and publish to npm (see [Release](#release)) |
 
-`integration.yml` needs the repository secrets `WAVE_ACCESS_TOKEN` and `WAVE_BUSINESS_ID`. Pull requests do not run it, so code in a pull request cannot read the secrets. When the schema check fails, Wave changed its API. Follow the steps in [Wave API version](wave-api.md).
+`integration.yml` and `publish.yml` need the repository secrets `WAVE_ACCESS_TOKEN` and `WAVE_BUSINESS_ID`. Pull requests do not run them, so code in a pull request cannot read the secrets.
 
 ## Release
 
@@ -165,6 +165,6 @@ GitHub Actions publishes the package to npm with a provenance statement (`.githu
 1. Run the checks in [Before you open a pull request](#before-you-open-a-pull-request) on `main`.
 2. Set `GITHUB_TOKEN` to a token that can make releases in the repository, for example `$env:GITHUB_TOKEN = gh auth token` in PowerShell. release-it uses it for the GitHub release.
 3. Run `npm run release`. It asks for the new version, writes `CHANGELOG.md`, commits, makes the tag and pushes.
-4. The tag starts the Publish workflow. It checks that the tag is the package version, runs the unit tests, lint and build, and publishes with provenance.
+4. The tag starts the Publish workflow. It checks that the tag is the package version, runs the unit and integration tests, lint and build, and publishes with provenance.
 5. On npmjs.com, make sure that the version shows the provenance badge.
 6. Submit the package for verification in the n8n Creator Portal.

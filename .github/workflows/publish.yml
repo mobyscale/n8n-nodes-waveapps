@@ -10,8 +10,11 @@
 #     Repository:           n8n-nodes-waveapps
 #     Workflow filename:    publish.yml
 #     Environment:          (empty)
-# If Trusted Publishing is not possible, add a granular npm token with publish access as
-# the NPM_TOKEN repository secret. Provenance works with both methods.
+# Until Trusted Publishing is set up, the NPM_TOKEN secret (a granular npm token with publish
+# access) is used. Provenance works with both methods.
+#
+# The Tests job runs the unit and integration tests first. It needs the WAVE_ACCESS_TOKEN and
+# WAVE_BUSINESS_ID secrets.
 #
 # npm rejects provenance from a private repository, so the repository must be public.
 
@@ -28,8 +31,55 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    # The integration tests share one Wave account with the Integration workflow.
+    concurrency:
+      group: wave-test-account
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    env:
+      WAVE_ACCESS_TOKEN: ${{ secrets.WAVE_ACCESS_TOKEN }}
+      WAVE_BUSINESS_ID: ${{ secrets.WAVE_BUSINESS_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Check that the tag is the package version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::The tag $GITHUB_REF_NAME is not the package version $version."
+            exit 1
+          fi
+
+      # Without the token the integration tests skip and the run looks green.
+      - name: Check the secrets
+        run: |
+          if [ -z "$WAVE_ACCESS_TOKEN" ] || [ -z "$WAVE_BUSINESS_ID" ]; then
+            echo "::error::Add the WAVE_ACCESS_TOKEN and WAVE_BUSINESS_ID secrets to the repository."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run the unit tests
+        run: npm test
+
+      - name: Run the integration tests
+        run: npm run test:integration
+
   publish:
     name: Publish to npm
+    needs: test
     runs-on: ubuntu-latest
 
     permissions:
@@ -51,19 +101,8 @@ jobs:
       - name: Update npm
         run: npm install -g npm@latest
 
-      - name: Check that the tag is the package version
-        run: |
-          version="$(node -p "require('./package.json').version")"
-          if [ "$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::The tag $GITHUB_REF_NAME is not the package version $version."
-            exit 1
-          fi
-
       - name: Install dependencies
         run: npm ci --ignore-scripts
-
-      - name: Run unit tests
-        run: npm test
 
       # In GitHub Actions, `n8n-node release` runs lint and build, then `npm publish` with
       # NPM_CONFIG_PROVENANCE=true.
