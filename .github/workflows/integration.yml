@@ -1,0 +1,91 @@
+# Runs the integration tests against the Wave test account, and checks the Wave schema
+# against the baseline in schema/wave.graphql (see docs/wave-api.md).
+#
+# Secrets: WAVE_ACCESS_TOKEN (full access token of the test account) and WAVE_BUSINESS_ID.
+# Use a test-only Wave account: the tests create, change and archive records.
+# Pull requests do not run this workflow, so a pull request cannot read the secrets.
+
+name: Integration
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    - cron: '0 7 * * *' # Schema check, every day
+    - cron: '30 7 * * 1' # Integration tests, on Mondays only, because archived test records stay in Wave
+
+concurrency:
+  # The tests share one Wave account, so two runs at the same time can collide.
+  group: wave-test-account
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  WAVE_ACCESS_TOKEN: ${{ secrets.WAVE_ACCESS_TOKEN }}
+  WAVE_BUSINESS_ID: ${{ secrets.WAVE_BUSINESS_ID }}
+
+jobs:
+  schema:
+    name: Wave schema check
+    if: github.event.schedule != '30 7 * * 1'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Check the secrets
+        run: |
+          if [ -z "$WAVE_ACCESS_TOKEN" ]; then
+            echo "::error::Add the WAVE_ACCESS_TOKEN secret to the repository."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Download the Wave schema
+        run: node scripts/introspect.mjs
+
+      - name: Compare with the baseline
+        run: |
+          if ! git diff --quiet -- schema/wave.graphql; then
+            git diff -- schema/wave.graphql
+            echo "::error::The Wave schema changed. See docs/wave-api.md to compare and update the baseline."
+            exit 1
+          fi
+
+  integration:
+    name: Integration tests
+    if: github.event.schedule != '0 7 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      # Without the token the tests skip and the run looks green.
+      - name: Check the secrets
+        run: |
+          if [ -z "$WAVE_ACCESS_TOKEN" ] || [ -z "$WAVE_BUSINESS_ID" ]; then
+            echo "::error::Add the WAVE_ACCESS_TOKEN and WAVE_BUSINESS_ID secrets to the repository."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run the integration tests
+        run: npm run test:integration
