@@ -35,6 +35,14 @@ Select a resource, then an operation. Fields that refer to Wave records (busines
 | [Vendor](docs/vendor.md) | Get, Get Many |
 | [Reference Data](docs/reference-data.md) | Get Account Subtypes, Get Account Types, Get Countries, Get Country, Get Currencies, Get Currency, Get Province |
 
+### Wave Trigger
+
+Starts a workflow when a customer, estimate, invoice, product, sales tax or vendor is created or updated. The node polls the Wave API, so it does not need a public URL. See [Wave Trigger](docs/wave-trigger.md).
+
+### Wave Webhook Trigger
+
+Starts a workflow when Wave sends a webhook event, for example `invoice.paid` or `estimate.viewed`. You register the URL of the node in the Wave dashboard. The node checks the signature of each event and adds the Wave API IDs to the output. See [Wave Webhook Trigger](docs/wave-webhook-trigger.md).
+
 ## Compatibility
 
 Tested with n8n 2.x and Node.js 22.
