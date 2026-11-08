@@ -13,6 +13,8 @@ Every operation has a **Business** field. Get also has a **Vendor** field. You c
 | Get | Get one vendor |
 | Get Many | Get the vendors of a business |
 
+Get and Get Many have a **Simplify** option. It is off by default. When you turn it on, the node returns flat values that you can write to a spreadsheet. See [Simplify](development.md#simplify).
+
 ## Get Many
 
 | Filter | Description |

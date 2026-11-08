@@ -8,6 +8,7 @@ import {
 	paginationFields,
 	resourceLocator,
 	showFor,
+	simplifyField,
 } from '../../shared/descriptions';
 import { CURRENCY_FIELDS, PAGE_INFO_FIELDS } from '../../shared/fields';
 import { compactInput, getBusinessId, getResourceId } from '../../shared/utils';
@@ -118,7 +119,8 @@ const description: INodeProperties[] = [
 				name: 'canArchive',
 				type: 'boolean',
 				default: true,
-				description: 'Whether a user can archive this account. Only some applications can set this.',
+				description:
+					'Whether a user can archive this account. Only some applications can set this.',
 			},
 			currencyField({
 				description:
@@ -239,7 +241,7 @@ const nonEmptyList = (value: unknown) =>
 
 export const accountResource: ResourceModule = {
 	option: { name: 'Account', value: RESOURCE, description: 'Chart of accounts' },
-	description,
+	description: [...description, simplifyField(RESOURCE, ['get', 'getAll'])],
 	operations: {
 		async create({ itemIndex }: OperationContext) {
 			const businessId = getBusinessId.call(this, itemIndex);

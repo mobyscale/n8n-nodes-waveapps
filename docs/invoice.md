@@ -19,6 +19,8 @@ Select the invoice with the **Invoice** field. You can pick it from a list or en
 | Send | Send an invoice by email |
 | Update | Change the fields of an invoice |
 
+Get and Get Many have a **Simplify** option. It is off by default. When you turn it on, the node returns flat values that you can write to a spreadsheet. See [Simplify](development.md#simplify).
+
 Every operation has a **Business** field.
 
 ## Create

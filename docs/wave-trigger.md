@@ -13,6 +13,7 @@ Use the [Wave Webhook Trigger](wave-webhook-trigger.md) for invoice, estimate an
 | Resource | Customer, Estimate, Invoice, Product, Sales Tax or Vendor |
 | Event | Created, Updated, or Created or Updated |
 | Filters | Optional filters. The filters depend on the resource (see below) |
+| Options | **Simplify**: return flat values for a spreadsheet instead of the raw Wave record. It is off by default. See [Simplify](development.md#simplify) |
 | Poll Times | How often n8n checks Wave for changes |
 
 ### Filters

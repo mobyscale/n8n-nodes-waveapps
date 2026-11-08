@@ -1,7 +1,13 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { businessLocator, enumOptions, resourceLocator, showFor } from '../../shared/descriptions';
+import {
+	businessLocator,
+	enumOptions,
+	resourceLocator,
+	showFor,
+	simplifyField,
+} from '../../shared/descriptions';
 import {
 	compactInput,
 	getBusinessId,
@@ -355,7 +361,7 @@ async function sendPaymentReceipt(
 
 export const invoicePaymentResource: ResourceModule = {
 	option: { name: 'Invoice Payment', value: RESOURCE },
-	description,
+	description: [...description, simplifyField(RESOURCE, ['get'])],
 	operations: {
 		async create({ itemIndex }: OperationContext) {
 			const invoiceId = getResourceId.call(this, 'invoiceId', itemIndex, 'Invoice');

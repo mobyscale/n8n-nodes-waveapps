@@ -16,4 +16,6 @@ You can set the business in three ways:
 | Get Invoice and Estimate Settings | Get the accent color and logo URL that the business uses on invoices and estimates |
 | Get Many | Get the businesses that the credential can access. Filter: **Is Archived** |
 
+Get and Get Many have a **Simplify** option. It is off by default. When you turn it on, the node returns flat values that you can write to a spreadsheet. See [Simplify](development.md#simplify).
+
 The Wave API cannot create, change or delete businesses.

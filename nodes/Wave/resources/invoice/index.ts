@@ -8,6 +8,7 @@ import {
 	paginationFields,
 	resourceLocator,
 	showFor,
+	simplifyField,
 } from '../../shared/descriptions';
 import { afterCreateFields, runAfterCreate } from '../../shared/afterCreate';
 import { PAGE_INFO_FIELDS } from '../../shared/fields';
@@ -449,7 +450,7 @@ type InvoiceOutput = { invoice: IDataObject | null; didSucceed: boolean };
 
 export const invoiceResource: ResourceModule = {
 	option: { name: 'Invoice', value: RESOURCE },
-	description,
+	description: [...description, simplifyField(RESOURCE, ['get', 'getAll'])],
 	operations: {
 		async approve({ itemIndex }: OperationContext) {
 			const invoiceId = getResourceId.call(this, 'invoiceId', itemIndex, 'Invoice');

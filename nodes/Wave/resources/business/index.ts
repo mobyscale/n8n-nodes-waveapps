@@ -1,6 +1,11 @@
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
-import { businessLocator, paginationFields, showFor } from '../../shared/descriptions';
+import {
+	businessLocator,
+	paginationFields,
+	showFor,
+	simplifyField,
+} from '../../shared/descriptions';
 import { ADDRESS_FIELDS, CURRENCY_FIELDS, PAGE_INFO_FIELDS } from '../../shared/fields';
 import { getBusinessId } from '../../shared/utils';
 import { waveGetAll, waveRequest, type WaveConnection } from '../../transport';
@@ -81,7 +86,7 @@ const description: INodeProperties[] = [
 
 export const businessResource: ResourceModule = {
 	option: { name: 'Business', value: RESOURCE },
-	description,
+	description: [...description, simplifyField(RESOURCE, ['get', 'getAll'])],
 	operations: {
 		async get({ itemIndex }: OperationContext) {
 			const businessId = getBusinessId.call(this, itemIndex);

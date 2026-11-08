@@ -8,7 +8,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import * as listSearch from '../Wave/methods/listSearch';
 import * as loadOptions from '../Wave/methods/loadOptions';
-import { businessLocator } from '../Wave/shared/descriptions';
+import { businessLocator, SIMPLIFY_DESCRIPTION } from '../Wave/shared/descriptions';
 import { toNodeError } from '../Wave/shared/utils';
 import { pollWave } from './poll';
 import { filterProperties, resourceOptions } from './resources';
@@ -84,6 +84,22 @@ export class WaveTrigger implements INodeType {
 				default: 'createdOrUpdated',
 			},
 			...filterProperties,
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Simplify',
+						name: 'simplify',
+						type: 'boolean',
+						default: false,
+						description: SIMPLIFY_DESCRIPTION,
+					},
+				],
+			},
 		],
 	};
 

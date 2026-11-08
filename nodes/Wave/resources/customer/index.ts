@@ -9,6 +9,7 @@ import {
 	paginationFields,
 	resourceLocator,
 	showFor,
+	simplifyField,
 } from '../../shared/descriptions';
 import {
 	ADDRESS_FIELDS,
@@ -392,7 +393,7 @@ async function findMatchingCustomers(
 
 export const customerResource: ResourceModule = {
 	option: { name: 'Customer', value: RESOURCE },
-	description,
+	description: [...description, simplifyField(RESOURCE, ['get', 'getAll'])],
 	operations: {
 		async create({ itemIndex }: OperationContext) {
 			const businessId = getBusinessId.call(this, itemIndex);

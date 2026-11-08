@@ -14,6 +14,8 @@ Wave accepts a deposit only on an estimate that is not a draft. Approve the esti
 | Delete | Delete a deposit. Returns `{ success: true, id }` |
 | Send Receipt | Send the receipt of a deposit by email |
 
+Get has a **Simplify** option. It is off by default. When you turn it on, the node returns flat values that you can write to a spreadsheet. See [Simplify](development.md#simplify).
+
 ## Fields
 
 | Operation | Field | Notes |

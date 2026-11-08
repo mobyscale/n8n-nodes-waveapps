@@ -12,6 +12,8 @@ An invoice payment is money that a customer paid for an invoice. The Wave API ca
 | Send Receipt | Send the receipt of a payment by email |
 | Update | Change a manual payment |
 
+Get has a **Simplify** option. It is off by default. When you turn it on, the node returns flat values that you can write to a spreadsheet. See [Simplify](development.md#simplify).
+
 Every operation has a **Business** field.
 
 ## Select a payment

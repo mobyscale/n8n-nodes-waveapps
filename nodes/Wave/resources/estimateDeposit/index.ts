@@ -1,6 +1,12 @@
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
-import { businessLocator, enumOptions, resourceLocator, showFor } from '../../shared/descriptions';
+import {
+	businessLocator,
+	enumOptions,
+	resourceLocator,
+	showFor,
+	simplifyField,
+} from '../../shared/descriptions';
 import { CURRENCY_FIELDS } from '../../shared/fields';
 import {
 	compactInput,
@@ -264,7 +270,7 @@ const description: INodeProperties[] = [
 
 export const estimateDepositResource: ResourceModule = {
 	option: { name: 'Estimate Deposit', value: RESOURCE },
-	description,
+	description: [...description, simplifyField(RESOURCE, ['get'])],
 	operations: {
 		async create({ itemIndex }) {
 			const additional = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
