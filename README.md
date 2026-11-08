@@ -4,6 +4,8 @@ n8n community nodes for [Wave](https://www.waveapps.com/) accounting. The nodes 
 
 [Installation](#installation) · [Credentials](#credentials) · [Nodes](#nodes) · [Development](#development)
 
+<img width="1273" height="822" alt="image" src="https://github.com/user-attachments/assets/95a0dfec-8972-4ed4-9aa8-76efee19d35b" />
+
 ## Installation
 
 Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation. The package name is `n8n-nodes-waveapps`.
