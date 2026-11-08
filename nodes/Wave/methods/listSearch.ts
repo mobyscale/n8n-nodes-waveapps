@@ -286,3 +286,5 @@ export async function searchPaymentAccounts(
 		paginationToken,
 	);
 }
+
+export { searchInvoicePayments } from './invoicePaymentSearch';
