@@ -4,6 +4,8 @@ import { customerResource } from './customer';
 import { customGraphqlResource } from './customGraphql';
 import { estimateResource } from './estimate';
 import { estimateDepositResource } from './estimateDeposit';
+import { invoiceResource } from './invoice';
+import { invoicePaymentResource } from './invoicePayment';
 import { productResource } from './product';
 import { referenceDataResource } from './referenceData';
 import { salesTaxResource } from './salesTax';
@@ -20,6 +22,8 @@ export const resources: ResourceModule[] = [
 	customerResource,
 	estimateResource,
 	estimateDepositResource,
+	invoiceResource,
+	invoicePaymentResource,
 	productResource,
 	salesTaxResource,
 	transactionResource,
