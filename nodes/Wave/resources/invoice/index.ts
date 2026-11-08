@@ -9,6 +9,7 @@ import {
 	showFor,
 } from '../../shared/descriptions';
 import { PAGE_INFO_FIELDS } from '../../shared/fields';
+import { buildLineItems, discountsField, itemsField } from '../../shared/lineItems';
 import {
 	compactInput,
 	getBusinessId,
@@ -20,7 +21,7 @@ import {
 } from '../../shared/utils';
 import { waveGetAll, waveMutation, waveRequest, type WaveConnection } from '../../transport';
 import type { OperationContext, ResourceModule } from '../types';
-import { buildInvoiceFields, buildItems } from './builders';
+import { buildInvoiceFields } from './builders';
 import { INVOICE_FIELDS, INVOICE_LIST_FIELDS } from './fields';
 
 const RESOURCE = 'invoice';
@@ -36,116 +37,6 @@ const customerLocator = (overrides: Partial<INodeProperties> = {}): INodePropert
 	}),
 	...overrides,
 });
-
-const itemFields: INodeProperties[] = [
-	{
-		...resourceLocator({
-			name: 'product',
-			displayName: 'Product',
-			searchMethod: 'searchProducts',
-			resourceLabel: 'product',
-		}),
-	},
-	{
-		displayName: 'Description',
-		name: 'description',
-		type: 'string',
-		default: '',
-		description: 'Replaces the description of the product',
-	},
-	{
-		displayName: 'Quantity',
-		name: 'quantity',
-		type: 'number',
-		typeOptions: { numberPrecision: 8 },
-		default: 1,
-	},
-	{
-		displayName: 'Unit Price',
-		name: 'unitPrice',
-		type: 'string',
-		default: '',
-		placeholder: 'e.g. 25.50',
-		description: 'Price per unit. Leave empty to use the price of the product.',
-	},
-	{
-		displayName: 'Taxes',
-		name: 'taxes',
-		type: 'fixedCollection',
-		typeOptions: { multipleValues: true },
-		placeholder: 'Add Tax',
-		default: {},
-		description: 'Leave empty to use the default sales taxes of the product',
-		options: [
-			{
-				displayName: 'Tax',
-				name: 'taxValues',
-				values: [
-					resourceLocator({
-						name: 'salesTax',
-						displayName: 'Sales Tax',
-						searchMethod: 'searchSalesTaxes',
-						resourceLabel: 'sales tax',
-					}),
-				],
-			},
-		],
-	},
-];
-
-const itemsField = (description: string): INodeProperties => ({
-	displayName: 'Items',
-	name: 'items',
-	type: 'fixedCollection',
-	typeOptions: { multipleValues: true },
-	placeholder: 'Add Item',
-	default: {},
-	description,
-	options: [{ displayName: 'Item', name: 'itemValues', values: itemFields }],
-});
-
-const discountsField: INodeProperties = {
-	displayName: 'Discounts',
-	name: 'discounts',
-	type: 'fixedCollection',
-	placeholder: 'Add Discount',
-	default: {},
-	description: 'Wave allows one discount for each invoice',
-	options: [
-		{
-			displayName: 'Discount',
-			name: 'discountValues',
-			values: [
-				{
-					displayName: 'Type',
-					name: 'discountType',
-					type: 'options',
-					options: enumOptions('InvoiceDiscountType'),
-					default: 'PERCENTAGE',
-				},
-				{ displayName: 'Name', name: 'name', type: 'string', default: '' },
-				{
-					displayName: 'Amount',
-					name: 'amount',
-					type: 'number',
-					typeOptions: { numberPrecision: 2 },
-					default: 0,
-					description: 'Discount amount in the invoice currency',
-					displayOptions: { show: { discountType: ['FIXED'] } },
-				},
-				{
-					displayName: 'Percentage',
-					name: 'percentage',
-					type: 'number',
-					typeOptions: { numberPrecision: 2 },
-					default: 0,
-					description: 'Discount percentage, for example 10 for 10%',
-					displayOptions: { show: { discountType: ['PERCENTAGE'] } },
-				},
-			],
-		},
-	],
-};
 
 const text = (displayName: string, name: string, description?: string): INodeProperties => ({
 	displayName,
@@ -178,7 +69,10 @@ const sharedOptionalFields: INodeProperties[] = [
 		'disableCreditCardPayments',
 		'Whether to block payment by card',
 	),
-	discountsField,
+	discountsField({
+		typeEnum: 'InvoiceDiscountType',
+		description: 'Wave allows one discount for each invoice',
+	}),
 	{
 		displayName: 'Due Date',
 		name: 'dueDate',
@@ -310,7 +204,7 @@ const description: INodeProperties[] = [
 		displayOptions: showFor(RESOURCE, ['create']),
 	}),
 	{
-		...itemsField('The line items of the invoice'),
+		...itemsField({ description: 'The line items of the invoice' }),
 		displayOptions: showFor(RESOURCE, ['create']),
 	},
 	{
@@ -333,7 +227,9 @@ const description: INodeProperties[] = [
 		displayOptions: showFor(RESOURCE, ['update']),
 		options: [
 			customerLocator({ description: 'Move the invoice to this customer' }),
-			itemsField('The new line items. They replace all existing items of the invoice.'),
+			itemsField({
+				description: 'The new line items. They replace all existing items of the invoice.',
+			}),
 			...sharedOptionalFields,
 		],
 	},
@@ -519,7 +415,7 @@ export const invoiceResource: ResourceModule = {
 		async create({ itemIndex }) {
 			const businessId = getBusinessId.call(this, itemIndex);
 			const customerId = getRequiredString.call(this, 'customer', itemIndex);
-			const items = buildItems(this.getNodeParameter('items', itemIndex, {}));
+			const items = buildLineItems(this.getNodeParameter('items', itemIndex, {}));
 			const fields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
 			const output = await waveMutation<InvoiceOutput>(
 				this,

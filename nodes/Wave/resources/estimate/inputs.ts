@@ -1,12 +1,7 @@
 import type { IDataObject } from 'n8n-workflow';
 
-import {
-	compactInput,
-	getLocatorValue,
-	splitList,
-	toDate,
-	toDateTime,
-} from '../../shared/utils';
+import { buildDiscounts, buildLineItems } from '../../shared/lineItems';
+import { compactInput, splitList, toDate, toDateTime } from '../../shared/utils';
 
 const PASS_THROUGH_FIELDS = [
 	'title',
@@ -36,36 +31,17 @@ const PASS_THROUGH_FIELDS = [
 	'currency',
 ];
 
-/** Builds the `items` list of EstimateCreateItemInput from the Items fixed collection value. */
-export function buildItems(collection: unknown): IDataObject[] | undefined {
-	const entries = (collection as { item?: IDataObject[] } | undefined)?.item;
-	if (!entries?.length) return undefined;
-	return entries.map((entry) => {
-		const taxIds = [getLocatorValue(entry.salesTax), ...splitList(entry.extraSalesTaxIds)].filter(
-			(id): id is string => Boolean(id),
-		);
-		return compactInput({
-			productId: getLocatorValue(entry.product),
-			description: entry.description as string,
-			quantity: entry.quantity as number,
-			unitPrice: entry.unitPrice as string,
-			taxes: taxIds.length ? taxIds.map((salesTaxId) => ({ salesTaxId })) : undefined,
-		});
-	});
+const ITEM_OPTIONS = { withItemName: true };
+
+// An empty list must stay undefined: estimatePatch then keeps the current items and discounts.
+function buildEstimateItems(value: unknown): IDataObject[] | undefined {
+	const items = buildLineItems(value, ITEM_OPTIONS);
+	return items.length ? items : undefined;
 }
 
-/** Builds the `discounts` list of EstimateCreateDiscountInput. */
-export function buildDiscounts(collection: unknown): IDataObject[] | undefined {
-	const entries = (collection as { discount?: IDataObject[] } | undefined)?.discount;
-	if (!entries?.length) return undefined;
-	return entries.map((entry) =>
-		compactInput({
-			discountType: entry.discountType as string,
-			name: entry.name as string,
-			amount: entry.discountType === 'FIXED' ? (entry.amount as number) : undefined,
-			percentage: entry.discountType === 'PERCENTAGE' ? (entry.percentage as number) : undefined,
-		}),
-	);
+function buildEstimateDiscounts(value: unknown): IDataObject[] | undefined {
+	const discounts = buildDiscounts(value);
+	return discounts.length ? discounts : undefined;
 }
 
 /** Maps the optional fields of Create (Additional Fields) and Update (Update Fields) to API input. */
@@ -76,8 +52,8 @@ export function buildEstimateFields(fields: IDataObject): IDataObject {
 	}
 	input.estimateDate = toDate(fields.estimateDate);
 	input.dueDate = toDate(fields.dueDate);
-	input.items = buildItems(fields.items);
-	input.discounts = buildDiscounts(fields.discounts);
+	input.items = buildEstimateItems(fields.items);
+	input.discounts = buildEstimateDiscounts(fields.discounts);
 	if (fields.attachmentIds !== undefined) {
 		const ids = splitList(fields.attachmentIds);
 		input.attachmentIds = ids.length ? ids : undefined;
@@ -95,7 +71,7 @@ export function buildCreateInput(
 		businessId,
 		customerId,
 		...buildEstimateFields(fields),
-		items: buildItems(items),
+		items: buildEstimateItems(items),
 	});
 }
 
