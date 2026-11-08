@@ -131,6 +131,16 @@ The **Simplify** option lets users write Wave records to a spreadsheet or a tabl
 
 Run `npm run lint`, `npm run build`, `npm test` and `npm run test:integration`. All must pass.
 
+## Continuous integration
+
+| Workflow | When | What it does |
+|---|---|---|
+| `ci.yml` | Each pull request and each push to `main` | Lint, build and unit tests. Uses no secrets |
+| `integration.yml` | Each push to `main`, by hand, and on a schedule | Integration tests against the Wave test account (Mondays), and a daily check of the Wave schema against `schema/wave.graphql` |
+| `publish.yml` | A version tag | Publishes to npm (see [Release](#release)) |
+
+`integration.yml` needs the repository secrets `WAVE_ACCESS_TOKEN` and `WAVE_BUSINESS_ID`. Pull requests do not run it, so code in a pull request cannot read the secrets. When the schema check fails, Wave changed its API. Follow the steps in [Wave API version](wave-api.md).
+
 ## Release
 
 GitHub Actions publishes the package to npm with a provenance statement (`.github/workflows/publish.yml`). n8n verifies a community node only when it was published this way. Do not run `npm publish` from your machine. The `prepublishOnly` script stops it.
