@@ -17,7 +17,7 @@ This page tells contributors (people and agents) how the package is built. Read 
 | `npm run lint` | Runs the n8n community node lint rules. Fix all errors and warnings |
 | `npm test` | Runs the unit tests (no network) |
 | `npm run test:integration` | Runs the integration tests against the Wave account in `.env` |
-| `npm run schema:update` | Downloads the Wave schema and generates the types again |
+| `npm run schema:update` | Downloads the Wave schema and generates the types again. See [Wave API version](wave-api.md) |
 
 ## Layout
 

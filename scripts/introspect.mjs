@@ -2,6 +2,7 @@
 //   schema/wave.graphql             the schema in SDL form (input for graphql-codegen)
 //   nodes/Wave/generated/enums.ts   the enum values with descriptions, for node dropdowns
 // Reads WAVE_ACCESS_TOKEN from the environment or from the uncommitted .env file.
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { loadEnvFile } from 'node:process';
@@ -36,7 +37,10 @@ const write = (path, content) => {
 	console.log(`Wrote ${path}`);
 };
 
-write('schema/wave.graphql', `${printSchema(buildClientSchema(result.data))}\n`);
+const sdl = `${printSchema(buildClientSchema(result.data))}\n`;
+write('schema/wave.graphql', sdl);
+console.log(`Schema SHA-256: ${createHash('sha256').update(sdl).digest('hex')}`);
+console.log('Compare it with the baseline in docs/wave-api.md.');
 
 const enums = result.data.__schema.types
 	.filter((type) => type.kind === 'ENUM' && !type.name.startsWith('__'))

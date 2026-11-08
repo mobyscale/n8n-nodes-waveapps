@@ -27,7 +27,7 @@
 		"lint:fix": "n8n-node lint --fix",
 		"test": "vitest run",
 		"test:integration": "vitest run --config vitest.integration.config.mts",
-		"schema:update": "node scripts/introspect.mjs && npm run codegen",
+		"schema:update": "node scripts/introspect.mjs && npm run codegen && prettier --write nodes/Wave/generated",
 		"codegen": "graphql-codegen --config codegen.yml",
 		"release": "n8n-node release",
 		"prepublishOnly": "n8n-node prerelease"
