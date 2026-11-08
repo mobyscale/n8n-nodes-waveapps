@@ -13,9 +13,11 @@ import {
 	resourceLocator,
 	showFor,
 } from '../../shared/descriptions';
+import { afterCreateFields, runAfterCreate } from '../../shared/afterCreate';
 import { CURRENCY_FIELDS, MONEY_FIELDS, PAGE_INFO_FIELDS } from '../../shared/fields';
 import { toWaveId } from '../../shared/ids';
 import { itemsField } from '../../shared/lineItems';
+import { getProductMatchConfig, resolveItemProducts } from '../../shared/productMatching';
 import {
 	compactInput,
 	getBusinessId,
@@ -149,6 +151,58 @@ const customerLocator = (displayOptions?: INodeProperties['displayOptions']) =>
 		displayOptions,
 	});
 
+/** Optional fields of the Send operation. "After Create" with Approve and Send uses them too. */
+const sendOptionFields: INodeProperties[] = [
+		{
+			displayName: 'Attach PDF',
+			name: 'attachPDF',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to attach a PDF of the estimate',
+		},
+		{
+			displayName: 'CC Myself',
+			name: 'ccMyself',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to send a copy to the sender',
+		},
+		{
+			displayName: 'From Address',
+			name: 'fromAddress',
+			type: 'string',
+			default: '',
+			description: 'The address that the email comes from',
+		},
+		{
+			displayName: 'Hide Grand Total',
+			name: 'hideGrandTotal',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to hide the grand total in the email',
+		},
+		{
+			displayName: 'Include Attachments',
+			name: 'includeAttachments',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to include the attachments of the estimate in the email',
+		},
+		{
+			displayName: 'Message',
+			name: 'message',
+			type: 'string',
+			typeOptions: { rows: 4 },
+			default: '',
+		},
+		{
+			displayName: 'Subject',
+			name: 'subject',
+			type: 'string',
+			default: '',
+		},
+];
+
 const description: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -266,9 +320,29 @@ const description: INodeProperties[] = [
 
 	// Create
 	customerLocator(showFor(RESOURCE, ['create'])),
+	{
+		displayName: 'Match Products By Name',
+		name: 'matchProductsByName',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to give each item a product name instead of a product. Wave uses the active product with this name, or creates it.',
+		displayOptions: showFor(RESOURCE, ['create']),
+	},
+	{
+		...resourceLocator({
+			name: 'defaultIncomeAccount',
+			displayName: 'Default Income Account',
+			searchMethod: 'searchIncomeAccounts',
+			resourceLabel: 'income account',
+			description: 'The income account of the products that Wave creates for unknown names',
+		}),
+		displayOptions: showFor(RESOURCE, ['create'], { matchProductsByName: [true] }),
+	},
 	itemsField({
 		description: 'The line items of the estimate',
 		withItemName: true,
+		withProductNameMatching: true,
 		displayOptions: showFor(RESOURCE, ['create']),
 	}),
 	{
@@ -280,6 +354,7 @@ const description: INodeProperties[] = [
 		displayOptions: showFor(RESOURCE, ['create']),
 		options: estimateFields,
 	},
+	...afterCreateFields(RESOURCE, 'estimate', sendOptionFields),
 
 	// Get
 	{
@@ -459,56 +534,7 @@ const description: INodeProperties[] = [
 		placeholder: 'Add Option',
 		default: {},
 		displayOptions: showFor(RESOURCE, ['send']),
-		options: [
-			{
-				displayName: 'Attach PDF',
-				name: 'attachPDF',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to attach a PDF of the estimate',
-			},
-			{
-				displayName: 'CC Myself',
-				name: 'ccMyself',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to send a copy to the sender',
-			},
-			{
-				displayName: 'From Address',
-				name: 'fromAddress',
-				type: 'string',
-				default: '',
-				description: 'The address that the email comes from',
-			},
-			{
-				displayName: 'Hide Grand Total',
-				name: 'hideGrandTotal',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to hide the grand total in the email',
-			},
-			{
-				displayName: 'Include Attachments',
-				name: 'includeAttachments',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to include the attachments of the estimate in the email',
-			},
-			{
-				displayName: 'Message',
-				name: 'message',
-				type: 'string',
-				typeOptions: { rows: 4 },
-				default: '',
-			},
-			{
-				displayName: 'Subject',
-				name: 'subject',
-				type: 'string',
-				default: '',
-			},
-		],
+		options: sendOptionFields,
 	},
 
 	// Generate PDF
@@ -561,6 +587,37 @@ function simpleEstimateOperation(mutation: string, inputType: string): Operation
 		const estimateId = getResourceId.call(this, 'estimateId', itemIndex, 'Estimate');
 		return await estimateMutation(this, itemIndex, mutation, inputType, { estimateId });
 	};
+}
+
+function buildSendInput(estimateId: string, to: string[], options: IDataObject): IDataObject {
+	return compactInput({
+		estimateId,
+		to,
+		subject: options.subject as string,
+		message: options.message as string,
+		attachPDF: (options.attachPDF as boolean | undefined) ?? false,
+		fromAddress: options.fromAddress as string,
+		ccMyself: options.ccMyself as boolean,
+		hideGrandTotal: options.hideGrandTotal as boolean,
+		includeAttachments: options.includeAttachments as boolean,
+	});
+}
+
+async function getEstimate(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	businessId: string,
+	id: string,
+): Promise<IDataObject> {
+	const data = await waveRequest<{ business: { estimate: IDataObject | null } | null }>(
+		ctx,
+		`query($businessId: ID!, $id: ID!) {
+			business(id: $businessId) { estimate(id: $id) { ${ESTIMATE_FIELDS} } }
+		}`,
+		{ businessId, id },
+		{ itemIndex },
+	);
+	return data.business?.estimate ?? {};
 }
 
 async function getCurrentEstimate(
@@ -634,20 +691,61 @@ export const estimateResource: ResourceModule = {
 				getRequiredString.call(this, 'customerId', itemIndex),
 				businessId,
 			);
+			const rawItems = this.getNodeParameter('items', itemIndex, {});
+			const matching = getProductMatchConfig(this, itemIndex, businessId);
 			const input = buildCreateInput(
 				businessId,
 				customerId,
-				this.getNodeParameter('items', itemIndex, {}),
+				matching ? await resolveItemProducts(this, itemIndex, matching, rawItems) : rawItems,
 				this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject,
 			);
 			await fillUnitPrices(this, itemIndex, businessId, input.items as IDataObject[] | undefined);
-			return await estimateMutation(
+			const created = await estimateMutation(
 				this,
 				itemIndex,
 				'estimateCreate',
 				'EstimateCreateInput',
 				input,
 			);
+			const id = created.id as string | undefined;
+			if (!id) return created;
+			return await runAfterCreate(this, itemIndex, created, {
+				label: 'Estimate',
+				id,
+				action: this.getNodeParameter('afterCreate', itemIndex, 'draft'),
+				run: async (step) => {
+					if (step === 'approve') {
+						await estimateMutation(this, itemIndex, 'estimateApprove', 'EstimateApproveInput', {
+							estimateId: id,
+						});
+					} else if (step === 'markSent') {
+						await estimateMutation(this, itemIndex, 'estimateMarkSent', 'EstimateMarkSentInput', {
+							estimateId: id,
+							sendMethod: 'MARKED_SENT',
+						});
+					} else {
+						const customer = created.customer as IDataObject | undefined;
+						const to = splitList(this.getNodeParameter('afterCreateTo', itemIndex, ''));
+						if (to.length === 0 && customer?.email) to.push(String(customer.email));
+						if (to.length === 0) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'No email address. Fill in Send To, or add an email address to the customer.',
+								{ itemIndex },
+							);
+						}
+						const options = this.getNodeParameter('afterCreateSendOptions', itemIndex, {});
+						await estimateMutation(
+							this,
+							itemIndex,
+							'estimateSend',
+							'EstimateSendInput',
+							buildSendInput(id, to, options as IDataObject),
+						);
+					}
+				},
+				reload: () => getEstimate(this, itemIndex, businessId, id),
+			});
 		},
 		async get({ itemIndex }) {
 			const businessId = getBusinessId.call(this, itemIndex);
@@ -763,17 +861,11 @@ export const estimateResource: ResourceModule = {
 				itemIndex,
 				'estimateSend',
 				'EstimateSendInput',
-				compactInput({
-					estimateId: getResourceId.call(this, 'estimateId', itemIndex, 'Estimate'),
-					to: splitList(this.getNodeParameter('to', itemIndex)),
-					subject: options.subject as string,
-					message: options.message as string,
-					attachPDF: (options.attachPDF as boolean | undefined) ?? false,
-					fromAddress: options.fromAddress as string,
-					ccMyself: options.ccMyself as boolean,
-					hideGrandTotal: options.hideGrandTotal as boolean,
-					includeAttachments: options.includeAttachments as boolean,
-				}),
+				buildSendInput(
+					getResourceId.call(this, 'estimateId', itemIndex, 'Estimate'),
+					splitList(this.getNodeParameter('to', itemIndex)),
+					options,
+				),
 			);
 		},
 		async generatePdf({ itemIndex }) {

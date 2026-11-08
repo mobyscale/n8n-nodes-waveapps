@@ -1,4 +1,5 @@
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	businessLocator,
@@ -8,8 +9,10 @@ import {
 	resourceLocator,
 	showFor,
 } from '../../shared/descriptions';
+import { afterCreateFields, runAfterCreate } from '../../shared/afterCreate';
 import { PAGE_INFO_FIELDS } from '../../shared/fields';
 import { buildLineItems, discountsField, itemsField } from '../../shared/lineItems';
+import { getProductMatchConfig, resolveItemProducts } from '../../shared/productMatching';
 import {
 	compactInput,
 	getBusinessId,
@@ -19,8 +22,9 @@ import {
 	splitList,
 	toDate,
 } from '../../shared/utils';
-import { waveGetAll, waveMutation, waveRequest, type WaveConnection } from '../../transport';
+import { waveGetAll, waveMutation, type WaveConnection } from '../../transport';
 import type { OperationContext, ResourceModule } from '../types';
+import { approveInvoice, getInvoice, markInvoiceSent, sendInvoice } from './actions';
 import { buildInvoiceFields } from './builders';
 import { INVOICE_FIELDS, INVOICE_LIST_FIELDS } from './fields';
 
@@ -123,6 +127,33 @@ const sharedOptionalFields: INodeProperties[] = [
 	text('Unit Column Title', 'unitTitle', 'Label of the unit column'),
 ];
 
+/** Optional fields of the Send operation. "After Create" with Approve and Send uses them too. */
+const sendOptionFields: INodeProperties[] = [
+		{
+			displayName: 'Attach PDF',
+			name: 'attachPDF',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to attach a PDF of the invoice',
+		},
+		{
+			displayName: 'CC Myself',
+			name: 'ccMyself',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to send a copy to the sender',
+		},
+		text('From Address', 'fromAddress', 'The email address that sends the invoice'),
+		{
+			displayName: 'Message',
+			name: 'message',
+			type: 'string',
+			typeOptions: { rows: 4 },
+			default: '',
+		},
+		text('Subject', 'subject'),
+];
+
 const description: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -204,7 +235,29 @@ const description: INodeProperties[] = [
 		displayOptions: showFor(RESOURCE, ['create']),
 	}),
 	{
-		...itemsField({ description: 'The line items of the invoice' }),
+		displayName: 'Match Products By Name',
+		name: 'matchProductsByName',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to give each item a product name instead of a product. Wave uses the active product with this name, or creates it.',
+		displayOptions: showFor(RESOURCE, ['create']),
+	},
+	{
+		...resourceLocator({
+			name: 'defaultIncomeAccount',
+			displayName: 'Default Income Account',
+			searchMethod: 'searchIncomeAccounts',
+			resourceLabel: 'income account',
+			description: 'The income account of the products that Wave creates for unknown names',
+		}),
+		displayOptions: showFor(RESOURCE, ['create'], { matchProductsByName: [true] }),
+	},
+	{
+		...itemsField({
+			description: 'The line items of the invoice',
+			withProductNameMatching: true,
+		}),
 		displayOptions: showFor(RESOURCE, ['create']),
 	},
 	{
@@ -216,6 +269,7 @@ const description: INodeProperties[] = [
 		displayOptions: showFor(RESOURCE, ['create']),
 		options: sharedOptionalFields,
 	},
+	...afterCreateFields(RESOURCE, 'invoice', sendOptionFields),
 
 	// Update
 	{
@@ -271,31 +325,7 @@ const description: INodeProperties[] = [
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: showFor(RESOURCE, ['send']),
-		options: [
-			{
-				displayName: 'Attach PDF',
-				name: 'attachPDF',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to attach a PDF of the invoice',
-			},
-			{
-				displayName: 'CC Myself',
-				name: 'ccMyself',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to send a copy to the sender',
-			},
-			text('From Address', 'fromAddress', 'The email address that sends the invoice'),
-			{
-				displayName: 'Message',
-				name: 'message',
-				type: 'string',
-				typeOptions: { rows: 4 },
-				default: '',
-			},
-			text('Subject', 'subject'),
-		],
+		options: sendOptionFields,
 	},
 
 	// Get Many
@@ -380,20 +410,7 @@ export const invoiceResource: ResourceModule = {
 	operations: {
 		async approve({ itemIndex }: OperationContext) {
 			const invoiceId = getResourceId.call(this, 'invoiceId', itemIndex, 'Invoice');
-			const output = await waveMutation<InvoiceOutput>(
-				this,
-				`mutation($input: InvoiceApproveInput!) {
-					invoiceApprove(input: $input) {
-						didSucceed
-						inputErrors { code message path }
-						invoice { ${INVOICE_FIELDS} }
-					}
-				}`,
-				'invoiceApprove',
-				{ invoiceId },
-				{ itemIndex },
-			);
-			return output.invoice ?? {};
+			return await approveInvoice(this, itemIndex, invoiceId);
 		},
 		async clone({ itemIndex }) {
 			const invoiceId = getResourceId.call(this, 'invoiceId', itemIndex, 'Invoice');
@@ -415,7 +432,11 @@ export const invoiceResource: ResourceModule = {
 		async create({ itemIndex }) {
 			const businessId = getBusinessId.call(this, itemIndex);
 			const customerId = getRequiredString.call(this, 'customer', itemIndex);
-			const items = buildLineItems(this.getNodeParameter('items', itemIndex, {}));
+			const rawItems = this.getNodeParameter('items', itemIndex, {});
+			const matching = getProductMatchConfig(this, itemIndex, businessId);
+			const items = buildLineItems(
+				matching ? await resolveItemProducts(this, itemIndex, matching, rawItems) : rawItems,
+			);
 			const fields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
 			const output = await waveMutation<InvoiceOutput>(
 				this,
@@ -435,7 +456,33 @@ export const invoiceResource: ResourceModule = {
 				}),
 				{ itemIndex },
 			);
-			return output.invoice ?? {};
+			const created = output.invoice ?? {};
+			const id = created.id as string | undefined;
+			if (!id) return created;
+			return await runAfterCreate(this, itemIndex, created, {
+				label: 'Invoice',
+				id,
+				action: this.getNodeParameter('afterCreate', itemIndex, 'draft'),
+				run: async (step) => {
+					if (step === 'approve') await approveInvoice(this, itemIndex, id);
+					else if (step === 'markSent') await markInvoiceSent(this, itemIndex, { invoiceId: id });
+					else {
+						const customer = created.customer as IDataObject | undefined;
+						const to = splitList(this.getNodeParameter('afterCreateTo', itemIndex, ''));
+						if (to.length === 0 && customer?.email) to.push(String(customer.email));
+						if (to.length === 0) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'No email address. Fill in Send To, or add an email address to the customer.',
+								{ itemIndex },
+							);
+						}
+						const options = this.getNodeParameter('afterCreateSendOptions', itemIndex, {});
+						await sendInvoice(this, itemIndex, { invoiceId: id, to, ...(options as IDataObject) });
+					}
+				},
+				reload: () => getInvoice(this, itemIndex, businessId, id),
+			});
 		},
 		async delete({ itemIndex }) {
 			const invoiceId = getResourceId.call(this, 'invoiceId', itemIndex, 'Invoice');
@@ -456,17 +503,7 @@ export const invoiceResource: ResourceModule = {
 		async get({ itemIndex }) {
 			const businessId = getBusinessId.call(this, itemIndex);
 			const invoiceId = getResourceId.call(this, 'invoiceId', itemIndex, 'Invoice');
-			const data = await waveRequest<{ business: { invoice: IDataObject | null } | null }>(
-				this,
-				`query($businessId: ID!, $invoiceId: ID!) {
-					business(id: $businessId) {
-						invoice(id: $invoiceId) { ${INVOICE_FIELDS} }
-					}
-				}`,
-				{ businessId, invoiceId },
-				{ itemIndex },
-			);
-			return data.business?.invoice ?? {};
+			return await getInvoice(this, itemIndex, businessId, invoiceId);
 		},
 		async getAll({ itemIndex }) {
 			const businessId = getBusinessId.call(this, itemIndex);
@@ -515,41 +552,17 @@ export const invoiceResource: ResourceModule = {
 		},
 		async markSent({ itemIndex }) {
 			const invoiceId = getResourceId.call(this, 'invoiceId', itemIndex, 'Invoice');
-			const sendMethod = this.getNodeParameter('sendMethod', itemIndex) as string;
-			const sentAt = this.getNodeParameter('sentAt', itemIndex, '') as string;
-			const output = await waveMutation<InvoiceOutput>(
-				this,
-				`mutation($input: InvoiceMarkSentInput!) {
-					invoiceMarkSent(input: $input) {
-						didSucceed
-						inputErrors { code message path }
-						invoice { ${INVOICE_FIELDS} }
-					}
-				}`,
-				'invoiceMarkSent',
-				compactInput({ invoiceId, sendMethod, sentAt }),
-				{ itemIndex },
-			);
-			return output.invoice ?? {};
+			return await markInvoiceSent(this, itemIndex, {
+				invoiceId,
+				sendMethod: this.getNodeParameter('sendMethod', itemIndex) as string,
+				sentAt: this.getNodeParameter('sentAt', itemIndex, '') as string,
+			});
 		},
 		async send({ itemIndex }) {
 			const invoiceId = getResourceId.call(this, 'invoiceId', itemIndex, 'Invoice');
 			const to = splitList(this.getNodeParameter('to', itemIndex));
 			const fields = this.getNodeParameter('sendFields', itemIndex, {}) as IDataObject;
-			const output = await waveMutation<InvoiceOutput>(
-				this,
-				`mutation($input: InvoiceSendInput!) {
-					invoiceSend(input: $input) {
-						didSucceed
-						inputErrors { code message path }
-						invoice { ${INVOICE_FIELDS} }
-					}
-				}`,
-				'invoiceSend',
-				compactInput({ invoiceId, to, ...fields }),
-				{ itemIndex },
-			);
-			return output.invoice ?? {};
+			return await sendInvoice(this, itemIndex, { invoiceId, to, ...fields });
 		},
 		async update({ itemIndex }) {
 			const invoiceId = getResourceId.call(this, 'invoiceId', itemIndex, 'Invoice');
