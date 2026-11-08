@@ -1,117 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { currencyField, enumOptions, resourceLocator } from '../../shared/descriptions';
-
-export const itemsField = (
-	displayOptions?: INodeProperties['displayOptions'],
-): INodeProperties => ({
-	displayName: 'Items',
-	name: 'items',
-	type: 'fixedCollection',
-	typeOptions: { multipleValues: true },
-	placeholder: 'Add Item',
-	default: {},
-	description: 'The line items of the estimate. On an update, they replace all current items.',
-	displayOptions,
-	options: [
-		{
-			displayName: 'Item',
-			name: 'item',
-			values: [
-				resourceLocator({
-					name: 'product',
-					displayName: 'Product',
-					searchMethod: 'searchProducts',
-					resourceLabel: 'product',
-				}),
-				{
-					displayName: 'Description',
-					name: 'description',
-					type: 'string',
-					default: '',
-					description: 'Replaces the description of the product',
-				},
-				{
-					displayName: 'Quantity',
-					name: 'quantity',
-					type: 'number',
-					typeOptions: { numberPrecision: 8 },
-					default: 1,
-				},
-				{
-					displayName: 'Unit Price',
-					name: 'unitPrice',
-					type: 'string',
-					default: '',
-					description:
-						'Price per unit in the major currency unit. Wave requires a price, so leave this empty to use the price of the product.',
-				},
-				resourceLocator({
-					name: 'salesTax',
-					displayName: 'Sales Tax',
-					searchMethod: 'searchSalesTaxes',
-					resourceLabel: 'sales tax',
-					required: false,
-					description:
-						'A sales tax for this item. Leave empty to use the default taxes of the product.',
-				}),
-				{
-					displayName: 'More Sales Tax IDs',
-					name: 'extraSalesTaxIds',
-					type: 'string',
-					default: '',
-					description: 'IDs of more sales taxes for this item, separated by commas',
-				},
-			],
-		},
-	],
-});
-
-const discountsField: INodeProperties = {
-	displayName: 'Discounts',
-	name: 'discounts',
-	type: 'fixedCollection',
-	typeOptions: { multipleValues: true },
-	placeholder: 'Add Discount',
-	default: {},
-	options: [
-		{
-			displayName: 'Discount',
-			name: 'discount',
-			values: [
-				{
-					displayName: 'Type',
-					name: 'discountType',
-					type: 'options',
-					options: enumOptions('EstimateDiscountType'),
-					default: 'PERCENTAGE',
-				},
-				{
-					displayName: 'Name',
-					name: 'name',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Amount',
-					name: 'amount',
-					type: 'number',
-					typeOptions: { numberPrecision: 2 },
-					default: 0,
-					description: 'The discount amount. Used for the type Fixed.',
-				},
-				{
-					displayName: 'Percentage',
-					name: 'percentage',
-					type: 'number',
-					typeOptions: { numberPrecision: 4 },
-					default: 0,
-					description: 'The discount percentage. Used for the type Percentage.',
-				},
-			],
-		},
-	],
-};
+import { currencyField, enumOptions } from '../../shared/descriptions';
+import { discountsField } from '../../shared/lineItems';
 
 const text = (displayName: string, name: string, description?: string): INodeProperties => ({
 	displayName,
@@ -182,7 +72,7 @@ export const estimateFields: INodeProperties[] = [
 		'disableCreditCardPayments',
 		'Whether the customer cannot pay this estimate by card',
 	),
-	discountsField,
+	discountsField({ typeEnum: 'EstimateDiscountType', multiple: true }),
 	flag(
 		"Don't Carry Over Notes to Invoice",
 		'dontCarryOverNotesToInvoice',

@@ -2,89 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	buildCreateInput,
-	buildDiscounts,
 	buildEstimateFields,
-	buildItems,
 	buildListVariables,
 	buildPatchInput,
-	splitList,
-	toDate,
-	toDateTime,
 	type CurrentEstimate,
 } from '../../nodes/Wave/resources/estimate/inputs';
 
 const rl = (value: string) => ({ __rl: true, mode: 'list', value });
-
-describe('date helpers', () => {
-	it('formats dates and date times', () => {
-		expect(toDate('2026-03-04T10:00:00.000Z')).toBe('2026-03-04');
-		expect(toDate('')).toBeUndefined();
-		expect(toDateTime('2026-03-04T10:00:00Z')).toBe('2026-03-04T10:00:00.000Z');
-		expect(toDateTime(undefined)).toBeUndefined();
-	});
-});
-
-describe('splitList', () => {
-	it('splits strings and lists', () => {
-		expect(splitList('a@x.com, b@x.com\nc@x.com')).toEqual(['a@x.com', 'b@x.com', 'c@x.com']);
-		expect(splitList(['a', ' b '])).toEqual(['a', 'b']);
-		expect(splitList('')).toEqual([]);
-	});
-});
-
-describe('buildItems', () => {
-	it('maps items and removes empty values', () => {
-		expect(
-			buildItems({
-				item: [
-					{
-						product: rl('P1'),
-						description: '',
-						quantity: 2,
-						unitPrice: '',
-						salesTax: rl('T1'),
-						extraSalesTaxIds: 'T2, T3',
-					},
-					{
-						product: rl('P2'),
-						quantity: 1,
-						unitPrice: '9.5',
-						salesTax: rl(''),
-						extraSalesTaxIds: '',
-					},
-				],
-			}),
-		).toEqual([
-			{
-				productId: 'P1',
-				quantity: 2,
-				taxes: [{ salesTaxId: 'T1' }, { salesTaxId: 'T2' }, { salesTaxId: 'T3' }],
-			},
-			{ productId: 'P2', quantity: 1, unitPrice: '9.5' },
-		]);
-	});
-
-	it('returns undefined without items', () => {
-		expect(buildItems({})).toBeUndefined();
-		expect(buildItems(undefined)).toBeUndefined();
-	});
-});
-
-describe('buildDiscounts', () => {
-	it('sends the value that fits the type', () => {
-		expect(
-			buildDiscounts({
-				discount: [
-					{ discountType: 'FIXED', name: 'Promo', amount: 5, percentage: 10 },
-					{ discountType: 'PERCENTAGE', amount: 5, percentage: 10 },
-				],
-			}),
-		).toEqual([
-			{ discountType: 'FIXED', name: 'Promo', amount: 5 },
-			{ discountType: 'PERCENTAGE', percentage: 10 },
-		]);
-	});
-});
 
 describe('buildEstimateFields', () => {
 	it('maps optional fields', () => {
@@ -118,7 +42,7 @@ describe('buildCreateInput', () => {
 		const input = buildCreateInput(
 			'B1',
 			'C1',
-			{ item: [{ product: rl('P1'), quantity: 1, unitPrice: '3' }] },
+			{ itemValues: [{ product: rl('P1'), quantity: 1, unitPrice: '3' }] },
 			{ poNumber: 'PO-1' },
 		);
 		expect(input).toEqual({
@@ -127,6 +51,60 @@ describe('buildCreateInput', () => {
 			poNumber: 'PO-1',
 			items: [{ productId: 'P1', quantity: 1, unitPrice: '3' }],
 		});
+	});
+});
+
+describe('items and discounts', () => {
+	it('sends the item name and the taxes of an estimate item', () => {
+		const input = buildEstimateFields({
+			items: {
+				itemValues: [
+					{
+						product: rl('P1'),
+						name: 'Design',
+						quantity: 2,
+						unitPrice: '9.5',
+						taxes: { taxValues: [{ salesTax: rl('T1') }, { salesTax: rl('T2') }] },
+					},
+				],
+			},
+			discounts: {
+				discountValues: [{ discountType: 'FIXED', name: 'Promo', amount: 5, percentage: 10 }],
+			},
+		});
+		expect(input.items).toEqual([
+			{
+				productId: 'P1',
+				name: 'Design',
+				quantity: 2,
+				unitPrice: '9.5',
+				taxes: [{ salesTaxId: 'T1' }, { salesTaxId: 'T2' }],
+			},
+		]);
+		expect(input.discounts).toEqual([{ discountType: 'FIXED', name: 'Promo', amount: '5' }]);
+	});
+
+	it('leaves items and discounts out when the lists are empty', () => {
+		expect(buildEstimateFields({ items: {}, discounts: {} })).toEqual({});
+		expect(buildEstimateFields({ items: { itemValues: [] } })).toEqual({});
+	});
+
+	it('keeps the current discounts of an estimate when the update has no discounts', () => {
+		const input = buildPatchInput(
+			{
+				id: 'E1',
+				status: 'DRAFT',
+				title: 'T',
+				estimateDate: '2026-01-01',
+				dueDate: '2026-01-31',
+				exchangeRate: '1',
+				currency: { code: 'USD' },
+				customer: { id: 'C1' },
+				discounts: [{ __typename: 'FixedEstimateDiscount', name: 'Promo', amount: '4' }],
+			},
+			{ discounts: {} },
+		);
+		expect(input.discounts).toEqual([{ discountType: 'FIXED', name: 'Promo', amount: '4' }]);
 	});
 });
 

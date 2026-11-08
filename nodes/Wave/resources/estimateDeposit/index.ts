@@ -8,9 +8,10 @@ import {
 	getLocatorValue,
 	getRequiredString,
 	getResourceId,
+	splitList,
+	toDate,
 } from '../../shared/utils';
 import { waveMutation, waveRequest, type WaveMutationOutput } from '../../transport';
-import { splitList, toDate } from '../estimate/inputs';
 import type { ResourceModule } from '../types';
 
 const RESOURCE = 'estimateDeposit';

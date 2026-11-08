@@ -184,7 +184,7 @@ describe.skipIf(!hasConfig)('estimate and estimate deposit', () => {
 			businessId: rl(businessId),
 			customerId: rl(customerId),
 			items: {
-				item: [
+				itemValues: [
 					{ product: rl(productId), description: 'First item', quantity: 2, unitPrice: '30' },
 					{ product: rl(productId), quantity: 1, unitPrice: '' },
 				],
@@ -194,7 +194,9 @@ describe.skipIf(!hasConfig)('estimate and estimate deposit', () => {
 				memo: 'Created by the integration test',
 				poNumber: 'PO-TEST',
 				dontCarryOverNotesToInvoice: true,
-				discounts: { discount: [{ discountType: 'PERCENTAGE', name: 'Promo', percentage: 10 }] },
+				discounts: {
+					discountValues: [{ discountType: 'PERCENTAGE', name: 'Promo', percentage: 10 }],
+				},
 			},
 		});
 		estimateId = created.id as string;
@@ -220,7 +222,7 @@ describe.skipIf(!hasConfig)('estimate and estimate deposit', () => {
 			operation: 'create',
 			businessId: rl(businessId),
 			customerId: rl(customerId),
-			items: { item: [{ product: rl(productId), quantity: 1, unitPrice: '10' }] },
+			items: { itemValues: [{ product: rl(productId), quantity: 1, unitPrice: '10' }] },
 			additionalFields: {
 				depositStatus: 'ENABLED_OPTIONAL',
 				depositUnit: 'PERCENTAGE',
@@ -288,7 +290,7 @@ describe.skipIf(!hasConfig)('estimate and estimate deposit', () => {
 			updateFields: {
 				memo: 'Updated memo',
 				title: 'n8n test quote 2',
-				items: { item: [{ product: rl(productId), quantity: 3, unitPrice: '10' }] },
+				items: { itemValues: [{ product: rl(productId), quantity: 3, unitPrice: '10' }] },
 			},
 		});
 		expect(updated).toMatchObject({ memo: 'Updated memo', title: 'n8n test quote 2' });

@@ -15,12 +15,15 @@ import {
 } from '../../shared/descriptions';
 import { CURRENCY_FIELDS, MONEY_FIELDS, PAGE_INFO_FIELDS } from '../../shared/fields';
 import { toWaveId } from '../../shared/ids';
+import { itemsField } from '../../shared/lineItems';
 import {
 	compactInput,
 	getBusinessId,
 	getLocatorValue,
 	getRequiredString,
 	getResourceId,
+	splitList,
+	toDateTime,
 } from '../../shared/utils';
 import {
 	waveGetAll,
@@ -31,13 +34,11 @@ import {
 } from '../../transport';
 import { ESTIMATE_PAYMENT_FIELDS } from '../estimateDeposit';
 import type { OperationHandler, ResourceModule } from '../types';
-import { estimateFields, itemsField } from './fields';
+import { estimateFields } from './fields';
 import {
 	buildCreateInput,
 	buildListVariables,
 	buildPatchInput,
-	splitList,
-	toDateTime,
 	type CurrentEstimate,
 } from './inputs';
 
@@ -265,7 +266,11 @@ const description: INodeProperties[] = [
 
 	// Create
 	customerLocator(showFor(RESOURCE, ['create'])),
-	itemsField(showFor(RESOURCE, ['create'])),
+	itemsField({
+		description: 'The line items of the estimate',
+		withItemName: true,
+		displayOptions: showFor(RESOURCE, ['create']),
+	}),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -402,7 +407,10 @@ const description: INodeProperties[] = [
 		displayOptions: showFor(RESOURCE, ['update']),
 		options: [
 			{ ...customerLocator(), required: false },
-			itemsField(),
+			itemsField({
+				description: 'The new line items. They replace all existing items of the estimate.',
+				withItemName: true,
+			}),
 			{
 				displayName: 'Status',
 				name: 'status',
