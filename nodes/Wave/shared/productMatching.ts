@@ -2,7 +2,12 @@ import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { fixedCollectionValues, getRequiredString } from './utils';
-import { waveGetAll, waveMutation, type WaveConnection, type WaveMutationOutput } from '../transport';
+import {
+	waveGetAll,
+	waveMutation,
+	type WaveConnection,
+	type WaveMutationOutput,
+} from '../transport';
 
 export interface ProductMatchConfig {
 	businessId: string;
@@ -114,9 +119,13 @@ export async function findOrCreateProduct(
 	);
 	const id = output.product?.id;
 	if (!id) {
-		throw new NodeOperationError(ctx.getNode(), `Wave did not return the product "${name.trim()}"`, {
-			itemIndex,
-		});
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`Wave did not return the product "${name.trim()}"`,
+			{
+				itemIndex,
+			},
+		);
 	}
 	index.set(key, id);
 	return id;

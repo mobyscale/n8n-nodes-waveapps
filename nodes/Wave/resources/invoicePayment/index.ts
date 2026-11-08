@@ -69,35 +69,35 @@ const memoField = (): INodeProperties => ({
 
 /** Optional fields of the receipt email. Send Receipt and Record Manual Payment use them. */
 const receiptOptionFields: INodeProperties[] = [
-		{
-			displayName: 'Attach PDF',
-			name: 'attachPdf',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to attach a PDF of the invoice',
-		},
-		{
-			displayName: 'CC Myself',
-			name: 'ccMyself',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to send a copy to the sender',
-		},
-		{
-			displayName: 'From Address',
-			name: 'fromAddress',
-			type: 'string',
-			default: '',
-			description: 'The email address that sends the receipt',
-		},
-		{
-			displayName: 'Message',
-			name: 'message',
-			type: 'string',
-			typeOptions: { rows: 4 },
-			default: '',
-		},
-		{ displayName: 'Subject', name: 'subject', type: 'string', default: '' },
+	{
+		displayName: 'Attach PDF',
+		name: 'attachPdf',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to attach a PDF of the invoice',
+	},
+	{
+		displayName: 'CC Myself',
+		name: 'ccMyself',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to send a copy to the sender',
+	},
+	{
+		displayName: 'From Address',
+		name: 'fromAddress',
+		type: 'string',
+		default: '',
+		description: 'The email address that sends the receipt',
+	},
+	{
+		displayName: 'Message',
+		name: 'message',
+		type: 'string',
+		typeOptions: { rows: 4 },
+		default: '',
+	},
+	{ displayName: 'Subject', name: 'subject', type: 'string', default: '' },
 ];
 
 const description: INodeProperties[] = [
@@ -327,7 +327,9 @@ async function getInvoiceBasics(
 	);
 	const invoice = data.business?.invoice;
 	if (!invoice) {
-		throw new NodeOperationError(ctx.getNode(), `Invoice ${invoiceId} was not found`, { itemIndex });
+		throw new NodeOperationError(ctx.getNode(), `Invoice ${invoiceId} was not found`, {
+			itemIndex,
+		});
 	}
 	return invoice;
 }
@@ -361,7 +363,11 @@ export const invoicePaymentResource: ResourceModule = {
 			const fields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
 			const fullBalance =
 				this.getNodeParameter('amountType', itemIndex, 'customAmount') === 'fullBalance';
-			const sendReceipt = this.getNodeParameter('sendReceiptAfterPayment', itemIndex, false) as boolean;
+			const sendReceipt = this.getNodeParameter(
+				'sendReceiptAfterPayment',
+				itemIndex,
+				false,
+			) as boolean;
 			const invoice =
 				fullBalance || sendReceipt
 					? await getInvoiceBasics(this, itemIndex, getBusinessId.call(this, itemIndex), invoiceId)
@@ -404,7 +410,9 @@ export const invoicePaymentResource: ResourceModule = {
 			try {
 				if (to.length === 0 && invoice?.customer?.email) to.push(invoice.customer.email);
 				if (to.length === 0) {
-					throw new Error('No email address. Fill in Receipt To, or add an email address to the customer');
+					throw new Error(
+						'No email address. Fill in Receipt To, or add an email address to the customer',
+					);
 				}
 				await sendPaymentReceipt(this, itemIndex, {
 					invoiceId,
