@@ -34,7 +34,7 @@ Create and Create Many have the same fields.
 | **Amount** | The total amount, including taxes. Use a positive number |
 | **External ID** | Your ID for the transaction. See [External ID](#external-id) |
 | Additional Fields | **Notes**. In simple mode also **Customer** and **Sales Taxes** |
-| Options (Create Many) | **Batch Size**: the number of transactions in one request. The default is 20 and the maximum is 50 |
+| Options | **Skip Duplicates**: see [Skip Duplicates](#skip-duplicates). Create Many also has **Batch Size**: the number of transactions in one request. The default is 20 and the maximum is 50 |
 
 ### Simple mode
 
@@ -108,6 +108,15 @@ Wave needs an External ID for each transaction. When the field is empty, the nod
 Wave rejects a transaction when another transaction in the business has the same External ID ("A transaction with the same externalId already exists"). Use a stable ID from the source system, for example the ID of the bank transaction or the order. Then you can run the workflow again without duplicates: the transactions that exist already fail, and the new ones are created. Turn on **Continue On Fail** (On Error: Continue) to keep the other items running.
 
 The output of each transaction includes the `externalId` that the node sent.
+
+## Skip Duplicates
+
+**Skip Duplicates** is an option of Create and Create Many. The default is off. Wave cannot read transactions, so the node finds a duplicate from the Wave error ("same externalId already exists").
+
+- **Create:** when the External ID exists already, the node does not fail. It returns `{ "skipped": true, "reason": "duplicate externalId", "externalId": "..." }`.
+- **Create Many:** when a batch fails, the node sends the entries of that batch again, one at a time. A duplicate gives a skipped item, as in Create. Other errors follow **Continue On Fail**: the entry gets an error item, or the node fails. The entries that Wave accepts are created.
+
+The node sends the entries of a failed batch again for any batch error. If a batch timed out but Wave created it, the entries are skipped as duplicates. Use a stable External ID, or Skip Duplicates cannot find the duplicates.
 
 ## Create Many
 

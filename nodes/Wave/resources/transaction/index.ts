@@ -1,11 +1,24 @@
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
+import type { MoneyTransactionDetails } from '../../generated/schema';
 
 import { businessLocator, enumOptions, resourceLocator, showFor } from '../../shared/descriptions';
 import { getBusinessId, toNodeError } from '../../shared/utils';
 import { waveMutation, type WaveMutationOutput } from '../../transport';
 import type { ResourceModule } from '../types';
-import { type BatchEntry, DEFAULT_BATCH_SIZE, MAX_BATCH_SIZE, planBatches } from './batch';
+import {
+	type BatchEntry,
+	DEFAULT_BATCH_SIZE,
+	isDuplicateExternalIdError,
+	MAX_BATCH_SIZE,
+	planBatches,
+} from './batch';
 import { readTransactionDetails } from './input';
 
 const RESOURCE = 'transaction';
@@ -300,7 +313,7 @@ const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		displayOptions: showFor(RESOURCE, ['createMany']),
+		displayOptions: show(),
 		options: [
 			{
 				displayName: 'Batch Size',
@@ -310,6 +323,15 @@ const description: INodeProperties[] = [
 				default: DEFAULT_BATCH_SIZE,
 				description:
 					'The number of transactions in one request. Wave can time out on large batches.',
+				displayOptions: { show: { '/operation': ['createMany'] } },
+			},
+			{
+				displayName: 'Skip Duplicates',
+				name: 'skipDuplicates',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to skip a transaction when Wave already has one with the same External ID, instead of failing. When a batch fails, Create Many sends its transactions again one at a time.',
 			},
 		],
 	},
@@ -319,6 +341,25 @@ function errorItem(message: string, itemIndex: number, json: IDataObject = {}): 
 	return { json: { error: message, ...json }, pairedItem: { item: itemIndex } };
 }
 
+function skippedResult(externalId: string): IDataObject {
+	return { skipped: true, reason: 'duplicate externalId', externalId };
+}
+
+async function createOne(
+	ctx: IExecuteFunctions,
+	businessId: string,
+	details: MoneyTransactionDetails,
+	itemIndex: number,
+) {
+	return await waveMutation<TransactionCreateOutput>(
+		ctx,
+		CREATE_MUTATION,
+		'moneyTransactionCreate',
+		{ businessId, ...details },
+		{ itemIndex },
+	);
+}
+
 export const transactionResource: ResourceModule = {
 	option: { name: 'Transaction', value: RESOURCE },
 	description,
@@ -326,14 +367,16 @@ export const transactionResource: ResourceModule = {
 		async create({ itemIndex }) {
 			const businessId = getBusinessId.call(this, itemIndex);
 			const details = readTransactionDetails.call(this, itemIndex);
-			const output = await waveMutation<TransactionCreateOutput>(
-				this,
-				CREATE_MUTATION,
-				'moneyTransactionCreate',
-				{ businessId, ...details },
-				{ itemIndex },
-			);
-			return { ...output, externalId: details.externalId } as IDataObject;
+			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			try {
+				const output = await createOne(this, businessId, details, itemIndex);
+				return { ...output, externalId: details.externalId } as IDataObject;
+			} catch (error) {
+				if (options.skipDuplicates === true && isDuplicateExternalIdError(error)) {
+					return skippedResult(details.externalId);
+				}
+				throw toNodeError(this.getNode(), error, itemIndex);
+			}
 		},
 	},
 	batchOperations: {
@@ -365,6 +408,7 @@ export const transactionResource: ResourceModule = {
 
 			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 			const batchSize = (options.batchSize as number | undefined) ?? DEFAULT_BATCH_SIZE;
+			const skipDuplicates = options.skipDuplicates === true;
 
 			for (const batch of planBatches(entries, batchSize)) {
 				const firstIndex = batch.entries[0].itemIndex;
@@ -391,6 +435,43 @@ export const transactionResource: ResourceModule = {
 						});
 					});
 				} catch (error) {
+					if (skipDuplicates) {
+						// Wave rejects the full batch and does not say which entry failed
+						for (const entry of batch.entries) {
+							try {
+								const output = await createOne(
+									this,
+									batch.businessId,
+									entry.details,
+									entry.itemIndex,
+								);
+								results[entry.itemIndex].push({
+									json: {
+										didSucceed: true,
+										transaction: output.transaction ?? null,
+										externalId: entry.details.externalId,
+									},
+									pairedItem: { item: entry.itemIndex },
+								});
+							} catch (entryError) {
+								if (isDuplicateExternalIdError(entryError)) {
+									results[entry.itemIndex].push({
+										json: skippedResult(entry.details.externalId),
+										pairedItem: { item: entry.itemIndex },
+									});
+									continue;
+								}
+								const nodeError = toNodeError(this.getNode(), entryError, entry.itemIndex);
+								if (!this.continueOnFail()) throw nodeError;
+								results[entry.itemIndex].push(
+									errorItem(nodeError.message, entry.itemIndex, {
+										externalId: entry.details.externalId,
+									}),
+								);
+							}
+						}
+						continue;
+					}
 					const nodeError = toNodeError(this.getNode(), error, firstIndex);
 					if (!this.continueOnFail()) throw nodeError;
 					for (const entry of batch.entries) {
