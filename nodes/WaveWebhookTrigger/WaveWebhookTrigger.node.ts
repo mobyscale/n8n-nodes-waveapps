@@ -17,7 +17,7 @@ export class WaveWebhookTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wave Webhook Trigger',
 		name: 'waveWebhookTrigger',
-		icon: { light: 'file:wave.svg', dark: 'file:wave.dark.svg' },
+		icon: { light: 'file:../Wave/wave.svg', dark: 'file:../Wave/wave.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["events"].length ? $parameter["events"].join(", ") : "All events"}}',

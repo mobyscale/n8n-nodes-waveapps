@@ -11,7 +11,7 @@ export class WaveApi implements ICredentialType {
 
 	displayName = 'Wave API';
 
-	icon: Icon = { light: 'file:icons/wave.svg', dark: 'file:icons/wave.dark.svg' };
+	icon: Icon = { light: 'file:../nodes/Wave/wave.svg', dark: 'file:../nodes/Wave/wave.dark.svg' };
 
 	documentationUrl =
 		'https://github.com/octanesoftware/n8n-nodes-waveapps/blob/main/docs/credentials.md';

@@ -25,6 +25,8 @@ This page tells contributors (people and agents) how the package is built. Read 
 credentials/                 WaveApi (full access token) and WaveOAuth2Api
 nodes/Wave/
   Wave.node.ts               Node class. Sends each item to the resource operation handler
+  wave.svg, wave.dark.svg    The only icon files. Other nodes and the credentials use them with
+                             relative paths, for example file:../Wave/wave.svg
   resources/<resource>/      One folder per resource: description and operation handlers
   resources/index.ts         The list of resources in the Resource dropdown
   methods/listSearch.ts      Search methods for resource locator lists
