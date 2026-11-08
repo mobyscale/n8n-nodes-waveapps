@@ -17,7 +17,7 @@ export class WaveTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wave Trigger',
 		name: 'waveTrigger',
-		icon: { light: 'file:wave.svg', dark: 'file:wave.dark.svg' },
+		icon: { light: 'file:../Wave/wave.svg', dark: 'file:../Wave/wave.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["event"] + ": " + $parameter["resource"]}}',

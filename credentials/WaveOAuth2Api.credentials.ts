@@ -19,7 +19,7 @@ export class WaveOAuth2Api implements ICredentialType {
 
 	displayName = 'Wave OAuth2 API';
 
-	icon: Icon = { light: 'file:icons/wave.svg', dark: 'file:icons/wave.dark.svg' };
+	icon: Icon = { light: 'file:../nodes/Wave/wave.svg', dark: 'file:../nodes/Wave/wave.dark.svg' };
 
 	extends = ['oAuth2Api'];
 
