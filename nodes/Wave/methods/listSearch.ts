@@ -304,3 +304,5 @@ export async function searchAnchorAccounts(
 		paginationToken,
 	);
 }
+
+export { searchInvoicePayments } from './invoicePaymentSearch';
