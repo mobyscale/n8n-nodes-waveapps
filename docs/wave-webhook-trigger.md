@@ -17,9 +17,11 @@ Wave has no API to register a webhook. You register the URL in the Wave dashboar
 1. Add the Wave Webhook Trigger node to a workflow.
 2. Activate the workflow. Open the node and copy the **Production URL** from **Webhook URLs**.
 3. In Wave, open **Tools > Webhooks** for your OAuth application.
-4. Paste the URL and select the events. Wave allows one endpoint URL for each OAuth application. To send events to more than one workflow, use one workflow that receives all events and calls the other workflows.
-5. Copy the signing secret of the endpoint.
+4. Paste the URL in **Endpoint URL** and select the events. Wave accepts only a public `https://` URL with a certificate from a certificate authority. A `localhost` URL or a private network address is rejected. Wave allows one endpoint URL for each OAuth application. To send events to more than one workflow, use one workflow that receives all events and calls the other workflows.
+5. Copy the value of **Secret token**. Wave sets this value, so you cannot edit the field. If the field is empty, save the endpoint first.
 6. In n8n, create a **Wave Webhook Secret API** credential and paste the secret. Select the credential in the node.
+
+To test on your computer, use a tunnel that gives n8n a public HTTPS URL (for example `cloudflared tunnel --url http://localhost:5678`). Set the `WEBHOOK_URL` environment variable of n8n to the tunnel URL, so that the node shows URLs with the public host.
 
 The **Test URL** works only while n8n listens for a test event. To test with it, paste the test URL in Wave for the time of the test, then change it back to the production URL.
 
