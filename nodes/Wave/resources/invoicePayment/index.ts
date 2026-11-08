@@ -1,4 +1,5 @@
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { businessLocator, enumOptions, resourceLocator, showFor } from '../../shared/descriptions';
 import {
@@ -65,6 +66,39 @@ const memoField = (): INodeProperties => ({
 	typeOptions: { rows: 3 },
 	default: '',
 });
+
+/** Optional fields of the receipt email. Send Receipt and Record Manual Payment use them. */
+const receiptOptionFields: INodeProperties[] = [
+		{
+			displayName: 'Attach PDF',
+			name: 'attachPdf',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to attach a PDF of the invoice',
+		},
+		{
+			displayName: 'CC Myself',
+			name: 'ccMyself',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to send a copy to the sender',
+		},
+		{
+			displayName: 'From Address',
+			name: 'fromAddress',
+			type: 'string',
+			default: '',
+			description: 'The email address that sends the receipt',
+		},
+		{
+			displayName: 'Message',
+			name: 'message',
+			type: 'string',
+			typeOptions: { rows: 4 },
+			default: '',
+		},
+		{ displayName: 'Subject', name: 'subject', type: 'string', default: '' },
+];
 
 const description: INodeProperties[] = [
 	{
@@ -156,7 +190,26 @@ const description: INodeProperties[] = [
 		description: 'The account that receives the payment',
 		displayOptions: showFor(RESOURCE, ['create']),
 	},
-	{ ...amountField(true), displayOptions: showFor(RESOURCE, ['create']) },
+	{
+		displayName: 'Amount Type',
+		name: 'amountType',
+		type: 'options',
+		default: 'customAmount',
+		description: 'How to set the amount of the payment',
+		displayOptions: showFor(RESOURCE, ['create']),
+		options: [
+			{ name: 'Custom Amount', value: 'customAmount', description: 'Use the Amount field' },
+			{
+				name: 'Full Balance',
+				value: 'fullBalance',
+				description: 'Pay the amount due of the invoice in full',
+			},
+		],
+	},
+	{
+		...amountField(true),
+		displayOptions: showFor(RESOURCE, ['create'], { amountType: ['customAmount'] }),
+	},
 	{
 		displayName: 'Payment Date',
 		name: 'paymentDate',
@@ -175,6 +228,33 @@ const description: INodeProperties[] = [
 		default: {},
 		displayOptions: showFor(RESOURCE, ['create']),
 		options: [memoField()],
+	},
+	{
+		displayName: 'Send Receipt',
+		name: 'sendReceiptAfterPayment',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to send the receipt by email after Wave records the payment',
+		displayOptions: showFor(RESOURCE, ['create']),
+	},
+	{
+		displayName: 'Receipt To',
+		name: 'receiptTo',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. name@example.com',
+		description:
+			'Email addresses that receive the receipt. Separate many addresses with commas. Leave empty to use the email address of the customer.',
+		displayOptions: showFor(RESOURCE, ['create'], { sendReceiptAfterPayment: [true] }),
+	},
+	{
+		displayName: 'Receipt Options',
+		name: 'receiptOptions',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: showFor(RESOURCE, ['create'], { sendReceiptAfterPayment: [true] }),
+		options: receiptOptionFields,
 	},
 
 	// Update
@@ -218,41 +298,58 @@ const description: INodeProperties[] = [
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: showFor(RESOURCE, ['sendReceipt']),
-		options: [
-			{
-				displayName: 'Attach PDF',
-				name: 'attachPdf',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to attach a PDF of the invoice',
-			},
-			{
-				displayName: 'CC Myself',
-				name: 'ccMyself',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to send a copy to the sender',
-			},
-			{
-				displayName: 'From Address',
-				name: 'fromAddress',
-				type: 'string',
-				default: '',
-				description: 'The email address that sends the receipt',
-			},
-			{
-				displayName: 'Message',
-				name: 'message',
-				type: 'string',
-				typeOptions: { rows: 4 },
-				default: '',
-			},
-			{ displayName: 'Subject', name: 'subject', type: 'string', default: '' },
-		],
+		options: receiptOptionFields,
 	},
 ];
 
 type PaymentOutput = { invoicePayment: IDataObject | null; didSucceed: boolean };
+
+interface InvoiceBasics {
+	amountDue: { value: string };
+	customer: { email: string | null } | null;
+}
+
+async function getInvoiceBasics(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	businessId: string,
+	invoiceId: string,
+): Promise<InvoiceBasics> {
+	const data = await waveRequest<{ business: { invoice: InvoiceBasics | null } | null }>(
+		ctx,
+		`query($businessId: ID!, $invoiceId: ID!) {
+			business(id: $businessId) {
+				invoice(id: $invoiceId) { amountDue { value } customer { email } }
+			}
+		}`,
+		{ businessId, invoiceId },
+		{ itemIndex },
+	);
+	const invoice = data.business?.invoice;
+	if (!invoice) {
+		throw new NodeOperationError(ctx.getNode(), `Invoice ${invoiceId} was not found`, { itemIndex });
+	}
+	return invoice;
+}
+
+async function sendPaymentReceipt(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	input: IDataObject,
+): Promise<void> {
+	await waveMutation(
+		ctx,
+		`mutation($input: InvoicePaymentReceiptSendInput!) {
+			invoicePaymentReceiptSend(input: $input) {
+				didSucceed
+				inputErrors { code message path }
+			}
+		}`,
+		'invoicePaymentReceiptSend',
+		compactInput(input),
+		{ itemIndex },
+	);
+}
 
 export const invoicePaymentResource: ResourceModule = {
 	option: { name: 'Invoice Payment', value: RESOURCE },
@@ -262,6 +359,24 @@ export const invoicePaymentResource: ResourceModule = {
 			const invoiceId = getResourceId.call(this, 'invoiceId', itemIndex, 'Invoice');
 			const paymentAccountId = getRequiredString.call(this, 'paymentAccountId', itemIndex);
 			const fields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
+			const fullBalance =
+				this.getNodeParameter('amountType', itemIndex, 'customAmount') === 'fullBalance';
+			const sendReceipt = this.getNodeParameter('sendReceiptAfterPayment', itemIndex, false) as boolean;
+			const invoice =
+				fullBalance || sendReceipt
+					? await getInvoiceBasics(this, itemIndex, getBusinessId.call(this, itemIndex), invoiceId)
+					: undefined;
+			let amount = String(this.getNodeParameter('amount', itemIndex, 0));
+			if (fullBalance) {
+				amount = invoice?.amountDue.value ?? '0';
+				if (!(Number(amount) > 0)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The invoice has no amount due (${amount}). There is nothing to pay in full.`,
+						{ itemIndex },
+					);
+				}
+			}
 			const output = await waveMutation<PaymentOutput>(
 				this,
 				`mutation($input: InvoicePaymentCreateManualInput!) {
@@ -275,7 +390,7 @@ export const invoicePaymentResource: ResourceModule = {
 				compactInput({
 					invoiceId,
 					paymentAccountId,
-					amount: String(this.getNodeParameter('amount', itemIndex)),
+					amount,
 					paymentDate: toDate(this.getNodeParameter('paymentDate', itemIndex)),
 					paymentMethod: this.getNodeParameter('paymentMethod', itemIndex) as string,
 					exchangeRate: String(this.getNodeParameter('exchangeRate', itemIndex, '1') || '1'),
@@ -283,7 +398,29 @@ export const invoicePaymentResource: ResourceModule = {
 				}),
 				{ itemIndex },
 			);
-			return output.invoicePayment ?? {};
+			const payment = output.invoicePayment ?? {};
+			if (!sendReceipt || !payment.id) return payment;
+			const to = splitList(this.getNodeParameter('receiptTo', itemIndex, ''));
+			try {
+				if (to.length === 0 && invoice?.customer?.email) to.push(invoice.customer.email);
+				if (to.length === 0) {
+					throw new Error('No email address. Fill in Receipt To, or add an email address to the customer');
+				}
+				await sendPaymentReceipt(this, itemIndex, {
+					invoiceId,
+					invoicePaymentId: payment.id,
+					to,
+					...(this.getNodeParameter('receiptOptions', itemIndex, {}) as IDataObject),
+				});
+			} catch (error) {
+				const cause = error as Error & { description?: string | null };
+				throw new NodeOperationError(
+					this.getNode(),
+					`The payment was recorded (ID ${String(payment.id)}), but sending the receipt failed: ${cause.message}`,
+					{ itemIndex, description: cause.description ?? undefined },
+				);
+			}
+			return payment;
 		},
 		async delete({ itemIndex }) {
 			const id = getResourceId.call(this, 'paymentId', itemIndex);
@@ -321,18 +458,7 @@ export const invoicePaymentResource: ResourceModule = {
 			const invoicePaymentId = getResourceId.call(this, 'paymentId', itemIndex);
 			const to = splitList(this.getNodeParameter('to', itemIndex));
 			const fields = this.getNodeParameter('sendFields', itemIndex, {}) as IDataObject;
-			await waveMutation(
-				this,
-				`mutation($input: InvoicePaymentReceiptSendInput!) {
-					invoicePaymentReceiptSend(input: $input) {
-						didSucceed
-						inputErrors { code message path }
-					}
-				}`,
-				'invoicePaymentReceiptSend',
-				compactInput({ invoiceId, invoicePaymentId, to, ...fields }),
-				{ itemIndex },
-			);
+			await sendPaymentReceipt(this, itemIndex, { invoiceId, invoicePaymentId, to, ...fields });
 			return { success: true, invoiceId, invoicePaymentId, to };
 		},
 		async update({ itemIndex }) {
