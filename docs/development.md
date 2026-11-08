@@ -45,6 +45,17 @@ docs/                        One page per resource, linked from the README
 
 Do not edit the files in `generated/` or `schema/` by hand. Run `npm run schema:update`.
 
+Do not change `eslint.config.mjs`. The `n8n-node lint` strict mode fails when the file is not the default. Check the exit code of `npm run lint`: a strict mode failure does not show a problem count.
+
+### `npm run dev` with npm 12
+
+npm 12 blocks install scripts by default, so the n8n copy that `npm run dev` installs can have no SQLite driver ("SQLite package has not been found installed"). To fix this, approve and rebuild `sqlite3` in the npx cache folder that the error shows (`<npm cache>/_npx/<hash>`):
+
+```
+npm install-scripts approve sqlite3
+npm rebuild sqlite3
+```
+
 ## How a resource works
 
 Each resource exports a `ResourceModule` (see `resources/types.ts`):
