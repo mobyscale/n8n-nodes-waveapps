@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { searchConnection } from '../../nodes/Wave/methods/searchHelpers';
 import { enumOptions, toDisplayName } from '../../nodes/Wave/shared/descriptions';
-import { compactInput, getLocatorValue } from '../../nodes/Wave/shared/utils';
+import { compactInput, getLocatorValue, toDateTime } from '../../nodes/Wave/shared/utils';
 
 describe('compactInput', () => {
 	it('removes empty values and empty nested objects', () => {
@@ -86,5 +86,16 @@ describe('searchConnection', () => {
 		expect(result.results.map((item) => item.name)).toEqual(['Alpha', 'Alphabet']);
 		expect(result.paginationToken).toBeUndefined();
 		expect(request).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('toDateTime', () => {
+	it('returns an ISO string with a time zone', () => {
+		expect(toDateTime('2024-05-01T10:00:00+02:00')).toBe('2024-05-01T08:00:00.000Z');
+	});
+
+	it('returns undefined for empty values', () => {
+		expect(toDateTime('')).toBeUndefined();
+		expect(toDateTime(undefined)).toBeUndefined();
 	});
 });
