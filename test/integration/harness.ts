@@ -37,7 +37,7 @@ export function uniqueName(label: string): string {
 const node: INode = {
 	id: 'integration',
 	name: 'Wave',
-	type: 'n8n-nodes-waveapps.wave',
+	type: '@mobyscale/n8n-nodes-waveapps.wave',
 	typeVersion: 1,
 	position: [0, 0],
 	parameters: {},

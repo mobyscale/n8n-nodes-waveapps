@@ -8,7 +8,7 @@ import { parseVariables, unwrapFirstField } from '../../nodes/Wave/resources/cus
 const node = {
 	id: '1',
 	name: 'Wave',
-	type: 'n8n-nodes-waveapps.wave',
+	type: '@mobyscale/n8n-nodes-waveapps.wave',
 	typeVersion: 1,
 	position: [0, 0] as [number, number],
 	parameters: {},

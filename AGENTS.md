@@ -103,7 +103,7 @@ regarding building community nodes:
 
 ## This project
 
-- This package is `n8n-nodes-waveapps`: n8n nodes for the Wave accounting GraphQL API.
+- This package is `@mobyscale/n8n-nodes-waveapps`: n8n nodes for the Wave accounting GraphQL API.
 - **Read `docs/development.md` before you change a node.** It has the layout, the resource
   module pattern and the rules for requests, fields, tests and docs.
 - `schema/wave.graphql` is the source of truth for queries and mutations. Do not guess fields.
