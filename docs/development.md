@@ -135,11 +135,10 @@ Run `npm run lint`, `npm run build`, `npm test` and `npm run test:integration`. 
 
 | Workflow | When | What it does |
 |---|---|---|
-| `ci.yml` | Each pull request and each push to `main` | Lint, build and unit tests. Uses no secrets |
-| `integration.yml` | Each push to `main` (a merged pull request) | Integration tests against the Wave test account |
-| `publish.yml` | A version tag | Unit and integration tests, then lint, build and publish to npm (see [Release](#release)) |
+| `tests.yml` (Tests) | Each pull request to `main` | Lint, build, unit tests and integration tests. Branch protection on `main` requires the **Tests** check |
+| `publish.yml` (Publish) | A published GitHub release | Runs `tests.yml`, then publishes to npm (see [Release](#release)) |
 
-`integration.yml` and `publish.yml` need the repository secrets `WAVE_ACCESS_TOKEN` and `WAVE_BUSINESS_ID`. Pull requests do not run them, so code in a pull request cannot read the secrets.
+The integration tests use the repository secrets `WAVE_ACCESS_TOKEN` and `WAVE_BUSINESS_ID`. GitHub does not give secrets to pull requests from forks, so for those the integration tests do not run. Run them locally before you merge such a pull request.
 
 ## Release
 
@@ -162,9 +161,11 @@ GitHub Actions publishes the package to npm with a provenance statement (`.githu
 
 ### Release a version
 
-1. Run the checks in [Before you open a pull request](#before-you-open-a-pull-request) on `main`.
-2. Set `GITHUB_TOKEN` to a token that can make releases in the repository, for example `$env:GITHUB_TOKEN = gh auth token` in PowerShell. release-it uses it for the GitHub release.
-3. Run `npm run release`. It asks for the new version, writes `CHANGELOG.md`, commits, makes the tag and pushes.
-4. The tag starts the Publish workflow. It checks that the tag is the package version, runs the unit and integration tests, lint and build, and publishes with provenance.
+1. Open a pull request that sets the new version in `package.json` and `package-lock.json` (`npm version <version> --no-git-tag-version`) and adds the changes to `CHANGELOG.md`. Merge it when the **Tests** check passes.
+2. In GitHub, open **Releases > Draft a new release**. Select **Choose a tag**, type the version (for example `1.1.0`, no `v`) and select **Create new tag on publish**. The target is `main`.
+3. Write the release notes for people who use the nodes, not a list of commits. Select **Publish release**.
+4. The release starts the Publish workflow. It runs the tests, checks that the tag is the package version, and publishes with provenance.
 5. On npmjs.com, make sure that the version shows the provenance badge.
-6. Submit the package for verification in the n8n Creator Portal.
+6. After the first release, submit the package for verification in the n8n Creator Portal.
+
+If the Publish workflow fails, fix the cause in a pull request. Then delete the release and its tag, and make the release again on the new `main`. A version that is not on npm can be used again.

@@ -1,0 +1,63 @@
+# The pull request gate: lint, build, unit tests and integration tests. Branch protection on
+# main requires the "Tests" check. The Publish workflow calls this workflow before it publishes.
+#
+# The integration tests use the repository secrets WAVE_ACCESS_TOKEN and WAVE_BUSINESS_ID and
+# a test-only Wave account. GitHub does not give secrets to pull requests from forks, so the
+# integration tests do not run for them.
+
+name: Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_call:
+
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    env:
+      WAVE_ACCESS_TOKEN: ${{ secrets.WAVE_ACCESS_TOKEN }}
+      WAVE_BUSINESS_ID: ${{ secrets.WAVE_BUSINESS_ID }}
+      FROM_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm test
+
+      # Without the token the integration tests skip and the run looks green.
+      - name: Check the secrets
+        if: env.FROM_FORK != 'true'
+        run: |
+          if [ -z "$WAVE_ACCESS_TOKEN" ] || [ -z "$WAVE_BUSINESS_ID" ]; then
+            echo "::error::Add the WAVE_ACCESS_TOKEN and WAVE_BUSINESS_ID secrets to the repository."
+            exit 1
+          fi
+
+      - name: Integration tests
+        if: env.FROM_FORK != 'true'
+        run: npm run test:integration
