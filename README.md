@@ -1,4 +1,4 @@
-# n8n-nodes-waveapps
+# @mobyscale/n8n-nodes-waveapps
 
 n8n community nodes for [Wave](https://www.waveapps.com/) accounting. The nodes use the Wave public GraphQL API.
 
@@ -8,7 +8,7 @@ n8n community nodes for [Wave](https://www.waveapps.com/) accounting. The nodes 
 
 ## Installation
 
-Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation. The package name is `n8n-nodes-waveapps`.
+Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation. The package name is `@mobyscale/n8n-nodes-waveapps`.
 
 ## Credentials
 

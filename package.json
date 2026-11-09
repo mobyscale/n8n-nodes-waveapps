@@ -1,5 +1,5 @@
 {
-	"name": "n8n-nodes-waveapps",
+	"name": "@mobyscale/n8n-nodes-waveapps",
 	"version": "1.0.0",
 	"description": "n8n community nodes for Wave accounting: businesses, customers, invoices, estimates, products, sales taxes, accounts and transactions through the Wave GraphQL API",
 	"license": "MIT",

@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-waveapps.wave",
+	"node": "@mobyscale/n8n-nodes-waveapps.wave",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Finance & Accounting"],
