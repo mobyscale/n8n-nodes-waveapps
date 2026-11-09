@@ -1,5 +1,6 @@
 # Publishes the package to npm with a provenance statement when a GitHub release is published.
 # The release tag must be the version in package.json, for example 1.0.0 (no "v").
+# The tests run in the Tests workflow, which branch protection requires before a merge to main.
 # The release steps are in docs/development.md, section "Release".
 #
 # n8n accepts verified community nodes only when GitHub Actions publishes them with npm
@@ -23,14 +24,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
-    name: Tests
-    uses: ./.github/workflows/tests.yml
-    secrets: inherit
-
   publish:
     name: Publish to npm
-    needs: test
     runs-on: ubuntu-latest
 
     permissions:
