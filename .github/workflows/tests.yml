@@ -1,5 +1,5 @@
 # The pull request gate: lint, build, unit tests and integration tests. Branch protection on
-# main requires the "Tests" check. The Publish workflow calls this workflow before it publishes.
+# main requires the "Tests" check.
 #
 # The integration tests use the repository secrets WAVE_ACCESS_TOKEN and WAVE_BUSINESS_ID and
 # a test-only Wave account. GitHub does not give secrets to pull requests from forks, so the
@@ -11,10 +11,9 @@ on:
   pull_request:
     branches:
       - main
-  workflow_call:
 
 concurrency:
-  group: tests-${{ github.event.pull_request.number || github.ref }}
+  group: tests-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
@@ -27,7 +26,7 @@ jobs:
     env:
       WAVE_ACCESS_TOKEN: ${{ secrets.WAVE_ACCESS_TOKEN }}
       WAVE_BUSINESS_ID: ${{ secrets.WAVE_BUSINESS_ID }}
-      FROM_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+      FROM_FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
     steps:
       - uses: actions/checkout@v4
 
