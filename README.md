@@ -1,5 +1,7 @@
 # @mobyscale/n8n-nodes-waveapps
 
+[![npm](https://img.shields.io/npm/v/@mobyscale/n8n-nodes-waveapps)](https://www.npmjs.com/package/@mobyscale/n8n-nodes-waveapps)
+
 n8n community nodes for [Wave](https://www.waveapps.com/) accounting. The nodes use the Wave public GraphQL API.
 
 [Installation](#installation) · [Credentials](#credentials) · [Nodes](#nodes) · [Development](#development)
