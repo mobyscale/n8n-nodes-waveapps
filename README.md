@@ -1,4 +1,4 @@
-# @mobyscale/n8n-nodes-waveapps
+# n8n-nodes-waveapps
 
 [![npm](https://img.shields.io/npm/v/@mobyscale/n8n-nodes-waveapps)](https://www.npmjs.com/package/@mobyscale/n8n-nodes-waveapps)
 
